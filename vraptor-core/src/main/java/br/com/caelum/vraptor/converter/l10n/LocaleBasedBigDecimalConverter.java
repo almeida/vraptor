@@ -16,6 +16,8 @@
  */
 package br.com.caelum.vraptor.converter.l10n;
 
+import static com.google.common.base.Strings.isNullOrEmpty;
+
 import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
@@ -27,8 +29,7 @@ import java.util.ResourceBundle;
 import br.com.caelum.vraptor.Convert;
 import br.com.caelum.vraptor.Converter;
 import br.com.caelum.vraptor.converter.ConversionError;
-import br.com.caelum.vraptor.converter.JstlWrapper;
-import br.com.caelum.vraptor.core.RequestInfo;
+import br.com.caelum.vraptor.core.Localization;
 import br.com.caelum.vraptor.ioc.RequestScoped;
 
 /**
@@ -44,20 +45,19 @@ import br.com.caelum.vraptor.ioc.RequestScoped;
 public class LocaleBasedBigDecimalConverter
     implements Converter<BigDecimal> {
 
-    private final JstlWrapper jstlWrapper = new JstlWrapper();
-    private final RequestInfo request;
-
-    public LocaleBasedBigDecimalConverter(RequestInfo request) {
-        this.request = request;
+    private final Localization localization;
+    
+    public LocaleBasedBigDecimalConverter(Localization localization) {
+        this.localization = localization;
     }
 
     public BigDecimal convert(String value, Class<? extends BigDecimal> type, ResourceBundle bundle) {
-        if (value == null || value.trim().length() == 0) {
+        if (isNullOrEmpty(value)) {
             return null;
         }
 
         try {
-            final Locale locale = jstlWrapper.findLocale(request);
+            final Locale locale = localization.getLocale();
             DecimalFormat fmt = new DecimalFormat("##0,00", new DecimalFormatSymbols(locale));
             fmt.setParseBigDecimal(true);
 

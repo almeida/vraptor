@@ -44,6 +44,7 @@ import br.com.caelum.vraptor.Converter;
 import br.com.caelum.vraptor.config.BasicConfiguration;
 import br.com.caelum.vraptor.core.Converters;
 import br.com.caelum.vraptor.core.RequestInfo;
+import br.com.caelum.vraptor.http.MutableRequest;
 import br.com.caelum.vraptor.http.MutableResponse;
 import br.com.caelum.vraptor.http.UrlToResourceTranslator;
 import br.com.caelum.vraptor.http.route.Route;
@@ -58,10 +59,12 @@ import br.com.caelum.vraptor.ioc.spring.components.DummyImplementation;
 import br.com.caelum.vraptor.ioc.spring.components.DummyInterceptor;
 import br.com.caelum.vraptor.ioc.spring.components.DummyResource;
 import br.com.caelum.vraptor.ioc.spring.components.Foo;
+import br.com.caelum.vraptor.ioc.spring.components.LifecycleComponent;
 import br.com.caelum.vraptor.ioc.spring.components.RequestScopedComponent;
 import br.com.caelum.vraptor.ioc.spring.components.RequestScopedContract;
 import br.com.caelum.vraptor.ioc.spring.components.SameName;
 import br.com.caelum.vraptor.ioc.spring.components.SpecialImplementation;
+import br.com.caelum.vraptor.scan.WebAppBootstrapFactory;
 import br.com.caelum.vraptor.test.HttpServletRequestMock;
 import br.com.caelum.vraptor.test.HttpSessionMock;
 
@@ -71,7 +74,7 @@ import br.com.caelum.vraptor.test.HttpSessionMock;
 public class SpringBasedContainerTest {
 	private SpringBasedContainer container;
 	private Mockery mockery;
-	private HttpServletRequestMock request;
+	private MutableRequest request;
 	private HttpSessionMock session;
 	private ServletContext servletContext;
 	private MutableResponse response;
@@ -91,17 +94,27 @@ public class SpringBasedContainerTest {
 
 				allowing(servletContext).getRealPath(with(any(String.class)));
 				will(returnValue(SpringBasedContainer.class.getResource(".").getFile()));
+
+                allowing(servletContext).getInitParameter(BasicConfiguration.SCANNING_PARAM);
+                will(returnValue("enabled"));
+
+                allowing(servletContext).getClassLoader();
+                will(returnValue(Thread.currentThread().getContextClassLoader()));
+
+                allowing(servletContext);
 			}
 		});
 
 		session = new HttpSessionMock(servletContext, "session");
-		request = new HttpServletRequestMock(session);
+		request = new HttpServletRequestMock(session, mockery.mock(MutableRequest.class), mockery);
 		response = mockery.mock(MutableResponse.class);
 
 		FilterChain chain = mockery.mock(FilterChain.class);
 		VRaptorRequestHolder.setRequestForCurrentThread(new RequestInfo(servletContext, chain, request, response));
 		RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
-		container = new SpringBasedContainer(null, new BasicConfiguration(servletContext));
+		BasicConfiguration config = new BasicConfiguration(servletContext);
+		container = new SpringBasedContainer(new DefaultSpringLocator().getApplicationContext(servletContext));
+		new WebAppBootstrapFactory().create(config).configure(container);
 		container.start(servletContext);
 	}
 
@@ -127,6 +140,11 @@ public class SpringBasedContainerTest {
 		DummyComponent component = container.instanceFor(DummyComponent.class);
 		assertNotNull("can instantiate", component);
 		assertTrue("is the right implementation", component instanceof DummyImplementation);
+	}
+
+	@Test
+	public void shouldRunPostConstructMethodOfApplicationScopedComponentsAtContainerStart() {
+		assertTrue("should have called init", LifecycleComponent.initialized);
 	}
 
 	static class NotRegisterd {}
@@ -207,7 +225,7 @@ public class SpringBasedContainerTest {
 	@Test
 	public void shoudRegisterConvertersInConverters() {
 		Converters converters = container.instanceFor(Converters.class);
-		Converter<?> converter = converters.to(Foo.class, container);
+		Converter<?> converter = converters.to(Foo.class);
 		assertThat(converter, is(instanceOf(DummyConverter.class)));
 	}
 

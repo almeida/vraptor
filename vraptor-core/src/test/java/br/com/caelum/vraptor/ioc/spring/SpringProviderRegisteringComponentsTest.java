@@ -27,8 +27,8 @@ import javax.servlet.ServletRequestEvent;
 import org.jmock.Expectations;
 import org.springframework.web.context.request.RequestContextListener;
 
-import br.com.caelum.vraptor.config.BasicConfiguration;
 import br.com.caelum.vraptor.core.RequestInfo;
+import br.com.caelum.vraptor.http.MutableRequest;
 import br.com.caelum.vraptor.http.MutableResponse;
 import br.com.caelum.vraptor.ioc.ContainerProvider;
 import br.com.caelum.vraptor.ioc.GenericContainerTest;
@@ -50,7 +50,8 @@ public class SpringProviderRegisteringComponentsTest extends GenericContainerTes
 			public T call() throws Exception {
 				T result = null;
 				HttpSessionMock session = new HttpSessionMock(context, "session" + ++counter);
-				HttpServletRequestMock httpRequest = new HttpServletRequestMock(session);
+				HttpServletRequestMock httpRequest = new HttpServletRequestMock(session,
+						mockery.mock(MutableRequest.class, "request" + counter), mockery);
 				MutableResponse response = mockery.mock(MutableResponse.class, "response" + counter);
 
 				RequestInfo request = new RequestInfo(context, null, httpRequest, response);
@@ -80,16 +81,13 @@ public class SpringProviderRegisteringComponentsTest extends GenericContainerTes
     protected void configureExpectations() {
         mockery.checking(new Expectations() {
             {
-                allowing(context).getInitParameter(BasicConfiguration.BASE_PACKAGES_PARAMETER_NAME);
-                will(returnValue("br.com.caelum.vraptor.ioc.fixture"));
-
-                allowing(context).getInitParameter(BasicConfiguration.ENCODING);
-
 				allowing(context).getAttribute("org.springframework.web.context.WebApplicationContext.ROOT");
 				will(returnValue(null));
 
 				allowing(context).getRealPath(with(any(String.class)));
-				will(returnValue(SpringBasedContainer.class.getResource(".").getFile()));
+				will(returnValue(SpringBasedContainer.class.getResource("../fixture").getFile()));
+
+                allowing(context);
             }
         });
     }

@@ -2,17 +2,17 @@
  * Copyright (c) 2009 Caelum - www.caelum.com.br/opensource
  * All rights reserved.
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); 
- * you may not use this file except in compliance with the License. 
- * You may obtain a copy of the License at 
- * 
- * 	http://www.apache.org/licenses/LICENSE-2.0 
- * 
- * Unless required by applicable law or agreed to in writing, software 
- * distributed under the License is distributed on an "AS IS" BASIS, 
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
- * See the License for the specific language governing permissions and 
- * limitations under the License. 
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * 	http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package br.com.caelum.vraptor.http.ognl;
 
@@ -33,7 +33,6 @@ import org.jmock.Expectations;
 import org.junit.Before;
 import org.junit.Test;
 
-import br.com.caelum.vraptor.ioc.Container;
 import br.com.caelum.vraptor.test.VRaptorMockery;
 
 public class ArrayAccessorTest {
@@ -45,7 +44,6 @@ public class ArrayAccessorTest {
     private SimpleNode node;
     private Data instance;
     private TypeConverter typeConverter;
-    private Container container;
 
     class Data {
         private Long[] simpleNode;
@@ -61,16 +59,22 @@ public class ArrayAccessorTest {
 
     @Before
     public void setup() {
-        this.accessor = new ArrayAccessor();
         this.mockery = new VRaptorMockery(true);
         this.context = mockery.mock(OgnlContext.class);
         this.evaluation = mockery.mock(Evaluation.class);
         this.node = mockery.mock(SimpleNode.class);
         this.instance = new Data();
-        this.container = mockery.mock(Container.class);
         this.typeConverter = mockery.mock(TypeConverter.class);
+        final EmptyElementsRemoval removal = new EmptyElementsRemoval() {
+            @Override
+			public void removeExtraElements() {
+                // does nothing
+            }
+        };
+        accessor = new ArrayAccessor();
         mockery.checking(new Expectations() {
             {
+            	allowing(context).get("removal"); will(returnValue(removal));
                 allowing(context).getCurrentEvaluation();
                 will(returnValue(evaluation));
                 allowing(evaluation).getPrevious();
@@ -81,8 +85,6 @@ public class ArrayAccessorTest {
                 will(returnValue("values"));
                 allowing(evaluation).getSource();
                 will(returnValue(instance));
-                one(context).get(Container.class);
-                will(returnValue(container));
                 one(context).getTypeConverter();
                 will(returnValue(typeConverter));
             }
@@ -103,19 +105,12 @@ public class ArrayAccessorTest {
         assertThat(value, is(equalTo((Object) 22L)));
     }
 
-    @SuppressWarnings("unchecked")
     @Test
     public void settingShouldNullifyUpToIndexAndIgnoreRemoval() throws Exception {
         final Long[] l = new Long[] {};
-        final EmptyElementsRemoval removal = new EmptyElementsRemoval() {
-            public void removeExtraElements() {
-                // does nothing
-            }
-        };
         mockery.checking(new Expectations() {
             {
-                one(container).instanceFor(EmptyElementsRemoval.class);
-                will(returnValue(removal));
+            	allowing(context).getRoot();
                 one(typeConverter).convertValue((Map) with(anything()), with(anything()),
                         (Member) with(anything()), (String) with(an(String.class)), with(anything()),
                         (Class) with(an(Class.class)));

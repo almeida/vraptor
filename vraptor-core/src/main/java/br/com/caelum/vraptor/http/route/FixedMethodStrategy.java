@@ -17,13 +17,13 @@
 
 package br.com.caelum.vraptor.http.route;
 
+import static com.google.common.base.Objects.equal;
+
 import java.lang.reflect.Method;
 import java.util.EnumSet;
 import java.util.Set;
 
 import br.com.caelum.vraptor.http.MutableRequest;
-import br.com.caelum.vraptor.resource.DefaultResourceClass;
-import br.com.caelum.vraptor.resource.DefaultResourceMethod;
 import br.com.caelum.vraptor.resource.HttpMethod;
 import br.com.caelum.vraptor.resource.ResourceMethod;
 import br.com.caelum.vraptor.util.Stringnifier;
@@ -45,12 +45,16 @@ public class FixedMethodStrategy implements Route {
 
 	private final String originalUri;
 
-	public FixedMethodStrategy(String originalUri, Class<?> type, Method method, Set<HttpMethod> methods,
-			ParametersControl control, int priority) {
+	private final String[] parameterNames;
+
+
+	public FixedMethodStrategy(String originalUri, ResourceMethod method, Set<HttpMethod> methods,
+			ParametersControl control, int priority, String[] parameterNames) {
 		this.originalUri = originalUri;
+		this.parameterNames = parameterNames;
 		this.methods = methods.isEmpty() ? EnumSet.allOf(HttpMethod.class) : EnumSet.copyOf(methods);
 		this.parameters = control;
-		this.resourceMethod = new DefaultResourceMethod(new DefaultResourceClass(type), method);
+		this.resourceMethod = method;
 		this.priority = priority;
 	}
 
@@ -72,12 +76,16 @@ public class FixedMethodStrategy implements Route {
 		return parameters.matches(uri);
 	}
 
-	public String urlFor(Class<?> type, Method m, Object params) {
-		return parameters.fillUri(params);
+	public String urlFor(Class<?> type, Method m, Object... params) {
+		return parameters.fillUri(parameterNames, params);
 	}
 
 	public int getPriority() {
 		return this.priority;
+	}
+
+	public String getOriginalUri() {
+		return this.originalUri;
 	}
 
 	@Override
@@ -108,27 +116,6 @@ public class FixedMethodStrategy implements Route {
 			return false;
 		}
 		FixedMethodStrategy other = (FixedMethodStrategy) obj;
-		if (methods == null) {
-			if (other.methods != null) {
-				return false;
-			}
-		} else if (!methods.equals(other.methods)) {
-			return false;
-		}
-		if (originalUri == null) {
-			if (other.originalUri != null) {
-				return false;
-			}
-		} else if (!originalUri.equals(other.originalUri)) {
-			return false;
-		}
-		if (resourceMethod == null) {
-			if (other.resourceMethod != null) {
-				return false;
-			}
-		} else if (!resourceMethod.equals(other.resourceMethod)) {
-			return false;
-		}
-		return true;
+		return equal(methods, other.methods) && equal(originalUri, other.originalUri) && equal(resourceMethod,other.resourceMethod);
 	}
 }

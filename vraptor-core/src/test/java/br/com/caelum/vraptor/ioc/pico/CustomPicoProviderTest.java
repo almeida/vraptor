@@ -31,7 +31,6 @@ import org.jmock.Expectations;
 import org.junit.Test;
 
 import br.com.caelum.vraptor.ComponentRegistry;
-import br.com.caelum.vraptor.config.BasicConfiguration;
 import br.com.caelum.vraptor.core.RequestInfo;
 import br.com.caelum.vraptor.http.MutableRequest;
 import br.com.caelum.vraptor.http.MutableResponse;
@@ -153,12 +152,6 @@ public class CustomPicoProviderTest extends GenericContainerTest {
                     will(returnValue("non-existing-vraptor.xml"));
                     allowing(context).getRealPath("/WEB-INF/classes/views.properties");
                     will(returnValue("views.properties"));
-
-                    allowing(context).getInitParameter(BasicConfiguration.BASE_PACKAGES_PARAMETER_NAME);
-					will(returnValue("br.com.caelum.vraptor.ioc.fixture"));
-
-	                allowing(context).getInitParameter(BasicConfiguration.ENCODING);
-
                 }
             });
         } catch (Exception e) {

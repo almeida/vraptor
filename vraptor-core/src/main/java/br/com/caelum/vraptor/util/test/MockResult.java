@@ -49,9 +49,9 @@ import br.com.caelum.vraptor.view.ResultException;
 public class MockResult extends AbstractResult {
 
 	private final Map<String, Object> values = new HashMap<String, Object>();
-	private Class<?> typeToUse;
-	private final Proxifier proxifier;
-
+	protected Class<?> typeToUse;
+	protected final Proxifier proxifier;
+	
 	public MockResult(Proxifier proxifier) {
 		this.proxifier = proxifier;
 	}
@@ -65,6 +65,10 @@ public class MockResult extends AbstractResult {
 		return this;
 	}
 
+	public Result on(Class<? extends Exception> exception) {
+	    return this;
+	}
+
 	public <T extends View> T use(final Class<T> view) {
 		this.typeToUse = view;
 		if (view.equals(EmptyResult.class)) {
@@ -73,7 +77,7 @@ public class MockResult extends AbstractResult {
 		return proxifier.proxify(view, returnOnFinalMethods(view));
 	}
 
-	private <T> MethodInvocation<T> returnOnFinalMethods(final Class<T> view) {
+	protected <T> MethodInvocation<T> returnOnFinalMethods(final Class<T> view) {
 		return new MethodInvocation<T>() {
 			public Object intercept(T proxy, Method method, Object[] args, SuperMethod superMethod) {
 				Class type = method.getReturnType();
@@ -124,6 +128,13 @@ public class MockResult extends AbstractResult {
 
 	public Map<String, Object> included() {
 		return values;
+	}
+
+	/**
+	 * Uses the type name to include.
+	 */
+	public Result include(Object value) {
+		return include(value.getClass().getSimpleName(), value);
 	}
 
 }

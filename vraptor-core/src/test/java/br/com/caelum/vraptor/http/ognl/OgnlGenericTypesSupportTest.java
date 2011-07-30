@@ -2,17 +2,17 @@
  * Copyright (c) 2009 Caelum - www.caelum.com.br/opensource
  * All rights reserved.
  *
- * Licensed under the Apache License, Version 2.0 (the "License"); 
- * you may not use this file except in compliance with the License. 
- * You may obtain a copy of the License at 
- * 
- * 	http://www.apache.org/licenses/LICENSE-2.0 
- * 
- * Unless required by applicable law or agreed to in writing, software 
- * distributed under the License is distributed on an "AS IS" BASIS, 
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
- * See the License for the specific language governing permissions and 
- * limitations under the License. 
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * 	http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package br.com.caelum.vraptor.http.ognl;
@@ -27,7 +27,6 @@ import java.util.ResourceBundle;
 import ognl.Ognl;
 import ognl.OgnlContext;
 import ognl.OgnlException;
-import ognl.OgnlRuntime;
 
 import org.jmock.Expectations;
 import org.jmock.Mockery;
@@ -35,6 +34,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import br.com.caelum.vraptor.converter.LongConverter;
+import br.com.caelum.vraptor.converter.StringConverter;
 import br.com.caelum.vraptor.core.Converters;
 import br.com.caelum.vraptor.ioc.Container;
 
@@ -50,18 +50,20 @@ import br.com.caelum.vraptor.ioc.Container;
  */
 public class OgnlGenericTypesSupportTest {
 
-    private Mockery mockery;
     private Cat myCat;
-    private Converters converters;
     private OgnlContext context;
     private Container container;
     private EmptyElementsRemoval removal;
     private ResourceBundle bundle;
+	private Mockery mockery;
+	private Converters converters;
 
     @Before
-    public void setup() {
-        this.mockery = new Mockery();
-        this.converters = mockery.mock(Converters.class);
+    public void setup() throws Exception {
+    	mockery = new Mockery();
+    	converters = mockery.mock(Converters.class);
+    	AbstractOgnlTestSupport.configOgnl(converters);
+
         this.container = mockery.mock(Container.class);
         this.removal = new EmptyElementsRemoval();
         this.bundle = ResourceBundle.getBundle("messages");
@@ -69,19 +71,20 @@ public class OgnlGenericTypesSupportTest {
             {
                 allowing(container).instanceFor(Converters.class);
                 will(returnValue(converters));
-                allowing(converters).to(Long.class, container);
+                allowing(converters).to(Long.class);
                 will(returnValue(new LongConverter()));
+                allowing(converters).to(String.class);
+                will(returnValue(new StringConverter()));
                 allowing(container).instanceFor(EmptyElementsRemoval.class);
                 will(returnValue(removal));
             }
         });
         this.myCat = new Cat();
-        OgnlRuntime.setNullHandler(Object.class, new ReflectionBasedNullHandler());
-        OgnlRuntime.setPropertyAccessor(List.class, new ListAccessor());
-        OgnlRuntime.setPropertyAccessor(Object[].class, new ArrayAccessor());
         this.context = (OgnlContext) Ognl.createDefaultContext(myCat);
         context.setTraceEvaluations(true);
         context.put(Container.class, container);
+        context.put("removal", removal);
+        context.put("nullHandler", new GenericNullHandler(removal));
         // OgnlRuntime.setPropertyAccessor(Set.class, new SetAccessor());
         // OgnlRuntime.setPropertyAccessor(Map.class, new MapAccessor());
         Ognl.setTypeConverter(context, new VRaptorConvertersAdapter(converters, bundle));

@@ -16,9 +16,10 @@
  */
 package br.com.caelum.vraptor.vraptor2.outject;
 
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+
+import net.vidageek.mirror.dsl.Mirror;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,6 +27,7 @@ import org.slf4j.LoggerFactory;
 import br.com.caelum.vraptor.InterceptionException;
 import br.com.caelum.vraptor.core.InterceptorStack;
 import br.com.caelum.vraptor.interceptor.Interceptor;
+import br.com.caelum.vraptor.ioc.Component;
 import br.com.caelum.vraptor.resource.ResourceMethod;
 import br.com.caelum.vraptor.vraptor2.BeanHelper;
 import br.com.caelum.vraptor.vraptor2.ComponentInfoProvider;
@@ -38,6 +40,7 @@ import br.com.caelum.vraptor.vraptor2.ComponentInfoProvider;
  *
  * @author Guilherme Silveira
  */
+@Component
 public class OutjectionInterceptor implements Interceptor {
 
     private static final String GET = "get";
@@ -78,18 +81,10 @@ public class OutjectionInterceptor implements Interceptor {
                                 + " but was not used because it returns void. Fix it.");
                 continue;
             }
-            try {
-                Object result = outject.invoke(resourceInstance);
-                String name = helper.nameForGetter(outject);
-                logger.debug("Outjecting {} as {}", name, result);
-                outjecter.include(name, result);
-            } catch (IllegalArgumentException e) {
-                throw new InterceptionException("Unable to outject value for " + outject.getName(), e);
-            } catch (IllegalAccessException e) {
-                throw new InterceptionException("Unable to outject value for " + outject.getName(), e);
-            } catch (InvocationTargetException e) {
-                throw new InterceptionException("Unable to outject value for " + outject.getName(), e.getCause());
-            }
+            Object result = new Mirror().on(resourceInstance).invoke().method(outject).withoutArgs();
+            String name = helper.nameForGetter(outject);
+            logger.debug("Outjecting {} as {}", name, result);
+            outjecter.include(name, result);
         }
     }
 

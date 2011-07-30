@@ -18,16 +18,20 @@
 package br.com.caelum.vraptor.core;
 
 import java.lang.annotation.Annotation;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
+import java.util.Set;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import br.com.caelum.vraptor.Convert;
 import br.com.caelum.vraptor.Converter;
+import br.com.caelum.vraptor.Intercepts;
 import br.com.caelum.vraptor.Resource;
 import br.com.caelum.vraptor.Result;
 import br.com.caelum.vraptor.Validator;
@@ -54,7 +58,9 @@ import br.com.caelum.vraptor.converter.PrimitiveIntConverter;
 import br.com.caelum.vraptor.converter.PrimitiveLongConverter;
 import br.com.caelum.vraptor.converter.PrimitiveShortConverter;
 import br.com.caelum.vraptor.converter.ShortConverter;
+import br.com.caelum.vraptor.converter.StringConverter;
 import br.com.caelum.vraptor.converter.jodatime.LocalDateConverter;
+import br.com.caelum.vraptor.converter.jodatime.LocalDateTimeConverter;
 import br.com.caelum.vraptor.converter.jodatime.LocalTimeConverter;
 import br.com.caelum.vraptor.deserialization.DefaultDeserializers;
 import br.com.caelum.vraptor.deserialization.Deserializer;
@@ -64,7 +70,6 @@ import br.com.caelum.vraptor.deserialization.DeserializesHandler;
 import br.com.caelum.vraptor.deserialization.JsonDeserializer;
 import br.com.caelum.vraptor.deserialization.XMLDeserializer;
 import br.com.caelum.vraptor.deserialization.XStreamXMLDeserializer;
-import br.com.caelum.vraptor.extra.ForwardToDefaultViewInterceptor;
 import br.com.caelum.vraptor.http.DefaultFormatResolver;
 import br.com.caelum.vraptor.http.DefaultResourceTranslator;
 import br.com.caelum.vraptor.http.EncodingHandlerFactory;
@@ -72,35 +77,43 @@ import br.com.caelum.vraptor.http.FormatResolver;
 import br.com.caelum.vraptor.http.ParameterNameProvider;
 import br.com.caelum.vraptor.http.ParametersProvider;
 import br.com.caelum.vraptor.http.ParanamerNameProvider;
-import br.com.caelum.vraptor.http.TypeCreator;
 import br.com.caelum.vraptor.http.UrlToResourceTranslator;
-import br.com.caelum.vraptor.http.asm.AsmBasedTypeCreator;
 import br.com.caelum.vraptor.http.ognl.EmptyElementsRemoval;
+import br.com.caelum.vraptor.http.ognl.OgnlFacade;
 import br.com.caelum.vraptor.http.ognl.OgnlParametersProvider;
 import br.com.caelum.vraptor.http.route.DefaultRouter;
 import br.com.caelum.vraptor.http.route.DefaultTypeFinder;
+import br.com.caelum.vraptor.http.route.Evaluator;
+import br.com.caelum.vraptor.http.route.JavaEvaluator;
 import br.com.caelum.vraptor.http.route.NoRoutesConfiguration;
 import br.com.caelum.vraptor.http.route.PathAnnotationRoutesParser;
 import br.com.caelum.vraptor.http.route.Router;
 import br.com.caelum.vraptor.http.route.RoutesConfiguration;
 import br.com.caelum.vraptor.http.route.RoutesParser;
 import br.com.caelum.vraptor.http.route.TypeFinder;
-import br.com.caelum.vraptor.interceptor.DefaultInterceptorRegistry;
 import br.com.caelum.vraptor.interceptor.DefaultTypeNameExtractor;
 import br.com.caelum.vraptor.interceptor.DeserializingInterceptor;
+import br.com.caelum.vraptor.interceptor.ExceptionHandlerInterceptor;
 import br.com.caelum.vraptor.interceptor.ExecuteMethodInterceptor;
 import br.com.caelum.vraptor.interceptor.FlashInterceptor;
+import br.com.caelum.vraptor.interceptor.ForwardToDefaultViewInterceptor;
 import br.com.caelum.vraptor.interceptor.InstantiateInterceptor;
 import br.com.caelum.vraptor.interceptor.InterceptorListPriorToExecutionExtractor;
 import br.com.caelum.vraptor.interceptor.InterceptorRegistry;
 import br.com.caelum.vraptor.interceptor.OutjectResult;
 import br.com.caelum.vraptor.interceptor.ParametersInstantiatorInterceptor;
 import br.com.caelum.vraptor.interceptor.ResourceLookupInterceptor;
+import br.com.caelum.vraptor.interceptor.TopologicalSortedInterceptorRegistry;
 import br.com.caelum.vraptor.interceptor.TypeNameExtractor;
 import br.com.caelum.vraptor.interceptor.download.DownloadInterceptor;
+import br.com.caelum.vraptor.interceptor.multipart.CommonsUploadMultipartInterceptor;
 import br.com.caelum.vraptor.interceptor.multipart.DefaultMultipartConfig;
+import br.com.caelum.vraptor.interceptor.multipart.DefaultServletFileUploadCreator;
 import br.com.caelum.vraptor.interceptor.multipart.MultipartConfig;
 import br.com.caelum.vraptor.interceptor.multipart.MultipartInterceptor;
+import br.com.caelum.vraptor.interceptor.multipart.NullMultipartInterceptor;
+import br.com.caelum.vraptor.interceptor.multipart.Servlet3MultipartInterceptor;
+import br.com.caelum.vraptor.interceptor.multipart.ServletFileUploadCreator;
 import br.com.caelum.vraptor.interceptor.multipart.UploadedFileConverter;
 import br.com.caelum.vraptor.ioc.Component;
 import br.com.caelum.vraptor.ioc.ConverterHandler;
@@ -109,7 +122,6 @@ import br.com.caelum.vraptor.ioc.ResourceHandler;
 import br.com.caelum.vraptor.ioc.StereotypeHandler;
 import br.com.caelum.vraptor.proxy.ObjenesisProxifier;
 import br.com.caelum.vraptor.proxy.Proxifier;
-import br.com.caelum.vraptor.reflection.CacheBasedTypeCreator;
 import br.com.caelum.vraptor.resource.DefaultMethodNotAllowedHandler;
 import br.com.caelum.vraptor.resource.DefaultResourceNotFoundHandler;
 import br.com.caelum.vraptor.resource.MethodNotAllowedHandler;
@@ -121,11 +133,13 @@ import br.com.caelum.vraptor.restfulie.headers.RestDefaults;
 import br.com.caelum.vraptor.serialization.DefaultRepresentationResult;
 import br.com.caelum.vraptor.serialization.HTMLSerialization;
 import br.com.caelum.vraptor.serialization.HibernateProxyInitializer;
+import br.com.caelum.vraptor.serialization.JSONPSerialization;
 import br.com.caelum.vraptor.serialization.JSONSerialization;
 import br.com.caelum.vraptor.serialization.NullProxyInitializer;
 import br.com.caelum.vraptor.serialization.ProxyInitializer;
 import br.com.caelum.vraptor.serialization.RepresentationResult;
 import br.com.caelum.vraptor.serialization.XMLSerialization;
+import br.com.caelum.vraptor.serialization.xstream.XStreamJSONPSerialization;
 import br.com.caelum.vraptor.serialization.xstream.XStreamJSONSerialization;
 import br.com.caelum.vraptor.serialization.xstream.XStreamXMLSerialization;
 import br.com.caelum.vraptor.validator.BeanValidator;
@@ -148,11 +162,13 @@ import br.com.caelum.vraptor.view.DefaultRefererResult;
 import br.com.caelum.vraptor.view.DefaultStatus;
 import br.com.caelum.vraptor.view.DefaultValidationViewsFactory;
 import br.com.caelum.vraptor.view.EmptyResult;
+import br.com.caelum.vraptor.view.FlashScope;
 import br.com.caelum.vraptor.view.HttpResult;
 import br.com.caelum.vraptor.view.LogicResult;
 import br.com.caelum.vraptor.view.PageResult;
 import br.com.caelum.vraptor.view.PathResolver;
 import br.com.caelum.vraptor.view.RefererResult;
+import br.com.caelum.vraptor.view.SessionFlashScope;
 import br.com.caelum.vraptor.view.Status;
 import br.com.caelum.vraptor.view.ValidationViewsFactory;
 
@@ -164,39 +180,40 @@ import br.com.caelum.vraptor.view.ValidationViewsFactory;
  */
 public class BaseComponents {
 
+    static final Logger logger = LoggerFactory.getLogger(BaseComponents.class);
+
     private final static Map<Class<?>, Class<?>> APPLICATION_COMPONENTS = classMap(
-    		TypeCreator.class, 				AsmBasedTypeCreator.class,
     		EncodingHandlerFactory.class, 	EncodingHandlerFactory.class,
     		AcceptHeaderToFormat.class, 	DefaultAcceptHeaderToFormat.class,
     		Converters.class, 				DefaultConverters.class,
-            InterceptorRegistry.class, 		DefaultInterceptorRegistry.class,
+            InterceptorRegistry.class, 		TopologicalSortedInterceptorRegistry.class,
+            InterceptorHandlerFactory.class,DefaultInterceptorHandlerFactory.class,
+            InterceptorListPriorToExecutionExtractor.class, InterceptorListPriorToExecutionExtractor.class,
             MultipartConfig.class, 			DefaultMultipartConfig.class,
             UrlToResourceTranslator.class, 	DefaultResourceTranslator.class,
             Router.class, 					DefaultRouter.class,
             TypeNameExtractor.class, 		DefaultTypeNameExtractor.class,
             ResourceNotFoundHandler.class, 	DefaultResourceNotFoundHandler.class,
             MethodNotAllowedHandler.class,	DefaultMethodNotAllowedHandler.class,
-            EmptyElementsRemoval.class, 	EmptyElementsRemoval.class,
             RoutesConfiguration.class, 		NoRoutesConfiguration.class,
             Deserializers.class,			DefaultDeserializers.class,
             Proxifier.class, 				ObjenesisProxifier.class,
             ParameterNameProvider.class, 	ParanamerNameProvider.class,
             TypeFinder.class, 				DefaultTypeFinder.class,
             XMLDeserializer.class,			XStreamXMLDeserializer.class,
-            JsonDeserializer.class,			JsonDeserializer.class,
             RoutesParser.class, 			PathAnnotationRoutesParser.class,
             Routes.class,					DefaultRoutes.class,
             RestDefaults.class,				DefaultRestDefaults.class,
+            Evaluator.class,				JavaEvaluator.class,
             ProxyInitializer.class,			getProxyInitializerImpl()
     );
 
     private final static Map<Class<?>, Class<?>> CACHED_COMPONENTS = classMap(
-    		TypeCreator.class, CacheBasedTypeCreator.class
     );
 
     private static final Map<Class<?>, Class<?>> PROTOTYPE_COMPONENTS = classMap(
     		InterceptorStack.class, 						DefaultInterceptorStack.class,
-    		RequestExecution.class, 						DefaultRequestExecution.class
+    		RequestExecution.class, 						EnhancedRequestExecution.class
     );
 
     private static final Map<Class<?>, Class<?>> REQUEST_COMPONENTS = classMap(
@@ -213,13 +230,15 @@ public class BaseComponents {
             DownloadInterceptor.class, 						DownloadInterceptor.class,
             EmptyResult.class, 								EmptyResult.class,
             ExecuteMethodInterceptor.class, 				ExecuteMethodInterceptor.class,
+            ExceptionHandlerInterceptor.class,              ExceptionHandlerInterceptor.class,
+            ExceptionMapper.class,                          DefaultExceptionMapper.class,
             FlashInterceptor.class, 						FlashInterceptor.class,
             ForwardToDefaultViewInterceptor.class, 			ForwardToDefaultViewInterceptor.class,
             InstantiateInterceptor.class, 					InstantiateInterceptor.class,
             DeserializingInterceptor.class, 				DeserializingInterceptor.class,
-            InterceptorListPriorToExecutionExtractor.class, InterceptorListPriorToExecutionExtractor.class,
+            JsonDeserializer.class,							JsonDeserializer.class,
             Localization.class, 							JstlLocalization.class,
-            MultipartInterceptor.class, 					MultipartInterceptor.class,
+            EmptyElementsRemoval.class,                     EmptyElementsRemoval.class,
             ParametersProvider.class, 						OgnlParametersProvider.class,
             OutjectResult.class, 							OutjectResult.class,
             ParametersInstantiatorInterceptor.class, 		ParametersInstantiatorInterceptor.class,
@@ -227,15 +246,18 @@ public class BaseComponents {
             Status.class,									DefaultStatus.class,
             XMLSerialization.class,							XStreamXMLSerialization.class,
             JSONSerialization.class,						XStreamJSONSerialization.class,
+            JSONPSerialization.class,						XStreamJSONPSerialization.class,
             HTMLSerialization.class,						HTMLSerialization.class,
             RepresentationResult.class,						DefaultRepresentationResult.class,
             FormatResolver.class,							DefaultFormatResolver.class,
             Configuration.class,							ApplicationConfiguration.class,
-            RestHeadersHandler.class,						DefaultRestHeadersHandler.class
+            RestHeadersHandler.class,						DefaultRestHeadersHandler.class,
+            OgnlFacade.class,								OgnlFacade.class,
+            FlashScope.class,								SessionFlashScope.class
     );
 
-    @SuppressWarnings("unchecked")
-	private static final List<Class<? extends Converter<?>>> BUNDLED_CONVERTERS = new ArrayList(Arrays.asList(
+    @SuppressWarnings({"unchecked", "rawtypes"})
+	private static final Set<Class<? extends Converter<?>>> BUNDLED_CONVERTERS = new HashSet(Arrays.asList(
     		BigDecimalConverter.class,
     		BigIntegerConverter.class,
     		BooleanConverter.class,
@@ -257,6 +279,7 @@ public class BaseComponents {
 			PrimitiveLongConverter.class,
 			PrimitiveShortConverter.class,
 			ShortConverter.class,
+			StringConverter.class,
 			UploadedFileConverter.class));
 
 
@@ -273,15 +296,14 @@ public class BaseComponents {
     	Resource.class,
     	Convert.class,
     	Component.class,
-    	Deserializes.class
-    };
-    @SuppressWarnings("unchecked")
-    private static final Class<? extends Deserializer>[] DESERIALIZERS = new Class[] {
-    	XMLDeserializer.class
+    	Deserializes.class,
+    	Intercepts.class
     };
 
+    private static final Set<Class<? extends Deserializer>> DESERIALIZERS = Collections.<Class<? extends Deserializer>>singleton(XMLDeserializer.class);
 
-    public static Class<? extends Deserializer>[] getDeserializers() {
+
+    public static Set<Class<? extends Deserializer>> getDeserializers() {
 		return DESERIALIZERS;
 	}
 
@@ -309,7 +331,29 @@ public class BaseComponents {
     	   !registerIfClassPresent(REQUEST_COMPONENTS, "org.hibernate.validator.ClassValidator",HibernateValidator3.class)) {
     		REQUEST_COMPONENTS.put(BeanValidator.class, NullBeanValidator.class);
     	}
+
+        if (isClassPresent("org.apache.commons.fileupload.FileItem")) {
+            REQUEST_COMPONENTS.put(MultipartInterceptor.class, CommonsUploadMultipartInterceptor.class);
+            REQUEST_COMPONENTS.put(ServletFileUploadCreator.class, DefaultServletFileUploadCreator.class);
+        } else if (isClassPresent("javax.servlet.http.Part")) {
+            REQUEST_COMPONENTS.put(MultipartInterceptor.class, Servlet3MultipartInterceptor.class);
+        } else {
+    	    logger.warn("There is neither commons-fileupload nor servlet3 handlers registered. " +
+    	    		"If you are willing to upload a file, please add the commons-fileupload in " +
+    	    		"your classpath or use a Servlet 3 Container");
+            REQUEST_COMPONENTS.put(MultipartInterceptor.class, NullMultipartInterceptor.class);
+    	}
+
         return Collections.unmodifiableMap(REQUEST_COMPONENTS);
+    }
+
+    private static boolean isClassPresent(String className) {
+        try {
+            Class.forName(className);
+            return true;
+        } catch (ClassNotFoundException e) {
+            return false;
+        }
     }
 
 	private static boolean registerIfClassPresent(Map<Class<?>, Class<?>> components, String className, Class<?>... types) {
@@ -325,7 +369,10 @@ public class BaseComponents {
 		}
 	}
 
-	private static void registerIfClassPresent(List<Class<? extends Converter<?>>> components, String className, Class<? extends Converter<?>>... types) {
+	private static void registerIfClassPresent(Set<Class<? extends Converter<?>>> components, String className, Class<? extends Converter<?>>... types) {
+		if (components.contains(types[0])) {
+			return;
+		}
 		try {
     		Class.forName(className);
     		for (Class<? extends Converter<?>> type : types) {
@@ -339,8 +386,9 @@ public class BaseComponents {
 	}
 
     @SuppressWarnings("unchecked")
-	public static List<Class<? extends Converter<?>>> getBundledConverters() {
-    	registerIfClassPresent(BUNDLED_CONVERTERS, "org.joda.time.LocalDate", LocalDateConverter.class, LocalTimeConverter.class);
+	public static Set<Class<? extends Converter<?>>> getBundledConverters() {
+    	registerIfClassPresent(BUNDLED_CONVERTERS, "org.joda.time.LocalDate",
+    			LocalDateConverter.class, LocalTimeConverter.class, LocalDateTimeConverter.class);
         return BUNDLED_CONVERTERS;
     }
 

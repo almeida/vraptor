@@ -17,7 +17,10 @@
 
 package br.com.caelum.vraptor.http.route;
 
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -29,8 +32,10 @@ import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import br.com.caelum.vraptor.eval.Evaluator;
+import br.com.caelum.vraptor.TwoWayConverter;
+import br.com.caelum.vraptor.core.Converters;
 import br.com.caelum.vraptor.http.MutableRequest;
+import br.com.caelum.vraptor.util.StringUtils;
 
 /**
  * Default implementation of parameters control on uris.
@@ -43,22 +48,26 @@ public class DefaultParametersControl implements ParametersControl {
 	private final List<String> parameters = new ArrayList<String>();
 	private final Pattern pattern;
 	private final String originalPattern;
+	private final Converters converters;
+    private final Evaluator evaluator;
 
-	public DefaultParametersControl(String originalPattern, Map<String, String> parameterPatterns) {
+    public DefaultParametersControl(String originalPattern, Map<String, String> parameterPatterns, Converters converters, Evaluator evaluator) {
 		this.originalPattern = originalPattern;
+		this.converters = converters;
 		this.pattern = compilePattern(originalPattern, parameterPatterns);
+        this.evaluator = evaluator;
 	}
 
-	public DefaultParametersControl(String originalPattern) {
-		this(originalPattern, Collections.<String, String>emptyMap());
+	public DefaultParametersControl(String originalPattern, Converters converters, Evaluator evaluator) {
+		this(originalPattern, Collections.<String, String>emptyMap(), converters, evaluator);
 	}
 
 	private Pattern compilePattern(String originalPattern, Map<String, String> parameterPatterns) {
 		Map<String, String> parameters = new HashMap<String, String>(parameterPatterns);
-		Matcher matcher = Pattern.compile("\\{([^\\}]+?)\\}").matcher(originalPattern);
+		Matcher matcher = Pattern.compile("\\{((?=[^\\{]+?[\\{])[^\\}]+?\\}|[^\\}]+?)\\}").matcher(originalPattern);
 		while (matcher.find()) {
 			String value = matcher.group(1);
-			String defaultPattern = value.matches("^[^:]+\\*$")? ".*" : "[^/]*";
+			String defaultPattern = value.matches("^[^:]+\\*$")? ".*" : value.indexOf(":") >= 0 ? value.replaceAll("^[^\\:]+?:", "") : "[^/]*";
 			if (!parameters.containsKey(value)) {
 				parameters.put(value, defaultPattern);
 			}
@@ -73,13 +82,39 @@ public class DefaultParametersControl implements ParametersControl {
 		return Pattern.compile(patternUri);
 	}
 
-	public String fillUri(Object params) {
-		String base = originalPattern.replaceAll("\\.\\*", "");
-		for (String key : parameters) {
-			Object result = new Evaluator().get(params, key);
-			base = base.replaceAll("\\{" + key + "\\*?\\}", result == null ? "" : result.toString());
+	public String fillUri(String[] paramNames, Object... paramValues) {
+		if (paramNames.length != paramValues.length) {
+			throw new IllegalArgumentException("paramNames must have the same length as paramValues. Names: " + Arrays.toString(paramNames) + " Values: " + Arrays.toString(paramValues));
 		}
-		return base;
+	
+		String[] splittedPatterns = StringUtils.extractParameters(originalPattern);
+		
+		String base = originalPattern;
+		for (int i=0; i<parameters.size(); i++) {
+			String key = parameters.get(i);
+			Object param = selectParam(key, paramNames, paramValues);
+			Object result = evaluator.get(param, key);
+			if (result != null) {
+				Class<?> type = result.getClass();
+				if (converters.existsTwoWayFor(type)) {
+					TwoWayConverter converter = converters.twoWayConverterFor(type);
+					result = converter.convert(result);
+				}
+			}
+
+			base = base.replace("{" + splittedPatterns[i] + "}", result == null ? "" : result.toString());
+		}
+		
+		return base.replaceAll("\\.\\*", "");
+	}
+
+	private Object selectParam(String key, String[] paramNames, Object[] paramValues) {
+		for (int i = 0; i < paramNames.length; i++) {
+			if (key.matches("^" + paramNames[i] + "(\\..*|$)")) {
+				return paramValues[i];
+			}
+		}
+		return null;
 	}
 
 	public boolean matches(String uri) {
@@ -91,7 +126,11 @@ public class DefaultParametersControl implements ParametersControl {
 		m.matches();
 		for (int i = 1; i <= m.groupCount(); i++) {
 			String name = parameters.get(i - 1);
-			request.setParameter(name, m.group(i));
+			try {
+				request.setParameter(name, URLDecoder.decode(m.group(i), "UTF-8"));
+			} catch (UnsupportedEncodingException e) {
+				logger.error("Error when decoding url parameters");
+			}
 		}
 	}
 

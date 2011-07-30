@@ -29,6 +29,9 @@ import javax.servlet.http.HttpServletResponse;
  *
  * @author filipesabella
  * @author Paulo Silveira
+ * 
+ * @see InputStreamDownload
+ * @see ByteArrayDownload
  */
 public class FileDownload implements Download {
 	private final InputStreamDownload inputDownload;

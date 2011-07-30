@@ -1,7 +1,170 @@
 [chapter ChangeLog]
 
-[section 3.1.3 (in dev)]
+[section 3.3.1]
 [list]
+* bugfix - fixed scannotation as mandatory on maven
+* bugfix - fixed ConcurrentModificationException on interceptors ordering
+* updating spring from 3.0.0 to 3.0.5
+* bugfix - fixed @PostConstruct on @ApplicationScoped components when using
+Spring as DI container.
+* better docs
+* bugfix - redirect to @Path's with regexes
+* bugfix - Hibernate and JPA Transaction interceptors now rollback when there are
+validation errors.
+[/list]
+
+[section 3.3.0]
+[box jar changes]
+	[list]
+		* change google-collect 1.0rc to guava-r07.
+		* scannotations 1.0.2 is now mandatory.
+	[/list]
+[/box]
+* **better Spring integration**: now Spring components can access VRaptor components and vice-versa  
+* guice: @PostConstruct and @PreDestroy working properly
+* guice: all request and session scoped components are exported to the view in the
+same way as spring provider (class name as key)
+
+* **interceptor ordering strategy changed**: one can order the interceptors using @Intercepts annotation,
+specifying which interceptors must run before or after the annotated interceptor
+[java]
+@Intercepts(before=AnInterceptor.class, after=AnotherInterceptor.class)
+[/java]
+So VRaptor will execute the interceptors in an ordering that respects before and after restrictions
+of all interceptors. 
+Therefore the InterceptorSequence interface is deprecated.
+
+* HTTP verb annotations now also can set paths:
+[java]
+@Get("/items/{id}"), @Post("/items"), etc 
+[/java]
+
+* bugfix: @Transactional from Spring can be used in any class (within spring aop limitations)
+* bugfix: upload of files with same name
+* bugfix: web-fragments.xml on jboss 6
+* bugfix: better support for arrays as parameters
+* new Download implementation: ByteArrayDownload and JFreeChartDownload
+* new jsonp view:
+[java]
+result.use(jsonp()).withCallback("theCallback").from(object).serialize();
+[/java]
+which returns
+[code]
+theCallback({"object": {...}})
+[/code]
+* commons-io dependency removed
+* PageResult methods renamed for consistency with other results.
+* better upload logs
+* refactor on converters: using Localization to get Locale and bundle 
+* Hibernate class removed. Use validator.validate(object) instead.
+* JSON response with optional indentation.
+
+[section 3.2.0]
+[list]
+* several performance tweaks: about 60% less request time.
+* **internal compatibility break**: InterceptorStack interface reorganized.
+* better implementation of VRaptor internal interceptors accepts method.
+* beta support to Google Guice, that can be used instead of Spring.
+* Pico provider is not deprecated anymore.
+* One can change the DI container without configuring it on web.xml.
+If VRaptor finds the Spring jars on classpath, Spring will be used; if
+PicoContainer jars are found it will be used; the same for Guice jars.
+One can find the container jars on lib/containers folder on vraptor zip. 
+* **internal compatibility break**: interfaces %%Converters%%, %%Router%%
+	and constructor of %%PathAnnotationRoutesParser%% class were changed. RouteBuilder
+	converted is now an interface => DefaultRouteBuilder is the implementation.
+	Those who extend PathAnnotationRoutesParser must change the call to delegate constructor.
+	Those who instantiate RouteBuilder directly must instantiate DefaultRouteBuilder.
+* new annotation @Lazy. Use it on interceptors which accepts method doesn't
+depend on the interceptor internal state:
+	[java]
+	@Intercepts
+	@Lazy
+	public class MyLazyInterceptor implements Interceptor {
+	    public MyLazyInterceptor(Dependency dependency) {
+			this.dependency = dependency;
+		}
+		public boolean accepts(ResourceMethod method) {
+			// depends only on method
+			return method.containsAnnotation(Abc.class);
+		}
+		public void intercepts(...) {
+			//...
+		}
+	}
+	[/java]
+	In this case, MyLazyInterceptor will only be instantiated when accepts returns true.
+	A non-functional instance of MyLazyInterceptor will be used to call the accepts method,
+	so it should not depend on the interceptor's internal state.
+	Do not use @Lazy if your accepts is trivial (always returns true).
+
+* **slight backwards compatibility break**: the default priority of @Path has changed to Integer.MAX_INTEGER/2.
+  It was Integer.MAX_INTEGER - 1. Despite of this compatibility break, we believe that it won't affect
+  working applications.
+* @Path priority can be defined with constants:
+	[java]
+	@Path(value="/url", priority=Path.HIGHEST)
+	@Path(value="/url", priority=Path.HIGH)
+	@Path(value="/url", priority=Path.DEFAULT)
+	@Path(value="/url", priority=Path.LOW)
+	@Path(value="/url", priority=Path.LOWEST)
+	[/java]
+* Servlet 3.0 upload support (by garcia-jj)
+* new Exception handlers (by garcia-jj)
+  [java]
+  result.on(SomeException.class).forwardTo(Controller.class).method();
+  //if a SomeException occurs, the request will be redirected
+  [/java]
+* new interface %%TwoWayConverter%% for bidirecional convertions.
+* native support for OPTIONS requests
+* fix: 405 instead of 500 on requests with unknown HTTP method.
+* more Joda Time converters (by Rodolfo Liviero)
+* improvings on Scala Blank Project (by Pedro Matiello)
+* bugfix: null Accept Header fallback to html
+
+[/list]
+
+[section 3.1.3]
+[list]
+* Scala Blank Project
+
+* Better strategy on Flash scope
+
+* starting support for javax.inject API. Naming logic parameters is now possible:
+
+* bugfixes on new Validator
+* bugfix: char as URI parameter
+* bugfix: now VRaptor works with browsers that do not correctly send Accepts header. 
+
+
+[java]
+public void logic(@Named("a_name") String anotherName) {...}
+[/java]
+
+So the request parameter must be called 'a_name'.
+
+* better support for GAE
+
+* new method on http result:
+[java]
+	result.use(http()).body(content);
+[/java]
+content can be either a String, an InputStream or a Reader.
+
+* more available methods for result.use(status())
+
+* new method: result.use(representation()).from(object, alias)
+
+* support for multiple selects:
+[java]
+public void logic(List<String> abc) {...}
+[/java]
+[xml]
+<select name="abc[]" multiple="multiple">...</select>
+[/xml]
+
+* auto 406 status when using result.use(representation())
+
 * One can register now all optional vraptor components on packages configuration
 on web.xml:
 [xml]
@@ -15,21 +178,44 @@ on web.xml:
 	</param-value>
 </context-param>
 [/xml]
-* bugfixes on new Validator
-* new method on http result:
-[java]
-	result.use(http()).body(content);
-[/java]
-content can be either a String, an InputStream or a Reader.
 
-* support for multiple selects:
-[java]
-public void logic(List<String> abc) {...}
-[/java]
-[xml]
-<select name="abc[]" multiple="multiple">...</select>
-[/xml]
 * rendering a null representation means returning a 404
+
+* new class: JsonDeserializer
+ 
+* MultipartInterceptor is now optional.
+
+* bugfix: arrays of length == 1 are now supported as logic parameters
+
+* Pico provider is deprecated
+
+* Validations using the request bundle (and locale)
+
+* ValidationMessage implements Serializable
+
+* new method: result.use(status()).badRequest(errorList); 
+  serializes the given error list with:
+  [java]
+  result.use(representation()).from(errorList, "errors");
+  [/java]
+  
+* shortcuts on Validator:
+[java]
+validator.onErrorForwardTo(controller).logic();
+validator.onErrorRedirectTo(controller).logic();
+validator.onErrorUsePageOf(controller).logic();
+[/java]
+where controller can be either a controller class or this, as in Result shortcuts.
+
+And the shortcut:
+[java]
+validator.onErrorSendBadRequest();
+[/java]
+which returns the Bad Request (400) status codes and serializes the validation
+error list according to Accept request header (result.use(representation()))
+que retorna o status Bad Request (400) e serializa a lista de erros de validação
+de acordo com o header Accept da requisição (result.use(representation()))
+
 [/list]
 
 [section 3.1.2]

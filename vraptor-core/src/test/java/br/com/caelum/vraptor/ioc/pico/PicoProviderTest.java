@@ -20,11 +20,10 @@ package br.com.caelum.vraptor.ioc.pico;
 import java.util.Arrays;
 import java.util.List;
 
-import org.jmock.Expectations;
 import org.junit.Test;
 
-import br.com.caelum.vraptor.config.BasicConfiguration;
 import br.com.caelum.vraptor.core.RequestInfo;
+import br.com.caelum.vraptor.http.MutableRequest;
 import br.com.caelum.vraptor.http.MutableResponse;
 import br.com.caelum.vraptor.ioc.ContainerProvider;
 import br.com.caelum.vraptor.ioc.GenericContainerTest;
@@ -35,12 +34,9 @@ import br.com.caelum.vraptor.test.HttpSessionMock;
 public class PicoProviderTest extends GenericContainerTest {
     private int counter;
 
-    @SuppressWarnings("unchecked")
     @Test
     public void canProvidePicoSpecificApplicationScopedComponents() {
-        List<Class<?>> components = Arrays.asList(Scanner.class, StereotypedComponentRegistrar.class,
-                ComponentFactoryRegistrar.class, InterceptorRegistrar.class, ConverterRegistrar.class,
-                ResourceRegistrar.class);
+        List<Class<?>> components = Arrays.asList();
         checkAvailabilityFor(true, components);
         mockery.assertIsSatisfied();
     }
@@ -52,18 +48,12 @@ public class PicoProviderTest extends GenericContainerTest {
 
     @Override
     protected <T> T executeInsideRequest(WhatToDo<T> execution) {
-        HttpSessionMock session = new HttpSessionMock(context, "session" + ++counter);
-        HttpServletRequestMock request = new HttpServletRequestMock(session);
+        final HttpSessionMock session = new HttpSessionMock(context, "session" + ++counter);
+        final MutableRequest request = new HttpServletRequestMock(session,
+        		mockery.mock(MutableRequest.class, "request" + counter), mockery);
         MutableResponse response = mockery.mock(MutableResponse.class, "response" + counter);
-        configureExpectations(request);
         RequestInfo webRequest = new RequestInfo(context, null, request, response);
         return execution.execute(webRequest, counter);
-    }
-
-    /**
-     * Children providers can set custom expectations on request.
-     */
-    protected void configureExpectations(HttpServletRequestMock request) {
     }
 
     /**
@@ -71,17 +61,5 @@ public class PicoProviderTest extends GenericContainerTest {
      */
     @Override
     protected void configureExpectations() {
-        try {
-            mockery.checking(new Expectations() {
-                {
-                	allowing(context).getInitParameter(BasicConfiguration.BASE_PACKAGES_PARAMETER_NAME);
-					will(returnValue("br.com.caelum.vraptor.ioc.fixture"));
-
-	                allowing(context).getInitParameter(BasicConfiguration.ENCODING);
-                }
-            });
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-		}
     }
 }

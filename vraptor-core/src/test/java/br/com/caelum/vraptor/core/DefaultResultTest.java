@@ -22,6 +22,9 @@ import static org.junit.Assert.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.never;
+import static org.mockito.Matchers.anyObject;
+import static org.mockito.Matchers.anyString;
 
 import javax.servlet.http.HttpServletRequest;
 
@@ -32,6 +35,7 @@ import org.mockito.MockitoAnnotations;
 
 import br.com.caelum.vraptor.Result;
 import br.com.caelum.vraptor.View;
+import br.com.caelum.vraptor.interceptor.TypeNameExtractor;
 import br.com.caelum.vraptor.ioc.Container;
 import br.com.caelum.vraptor.view.LogicResult;
 import br.com.caelum.vraptor.view.PageResult;
@@ -44,11 +48,12 @@ public class DefaultResultTest {
     @Mock private Container container;
 
 	private Result result;
+	@Mock private TypeNameExtractor extractor;
 
     @Before
     public void setup() {
         MockitoAnnotations.initMocks(this);
-        result = new DefaultResult(request, container);
+        result = new DefaultResult(request, container, null, extractor);
     }
 
     public static class MyView implements View {
@@ -79,7 +84,7 @@ public class DefaultResultTest {
 
     	result.forwardTo("/any/uri");
 
-    	verify(pageResult).forward("/any/uri");
+    	verify(pageResult).forwardTo("/any/uri");
 	}
 
     @Test
@@ -89,7 +94,7 @@ public class DefaultResultTest {
 
     	result.redirectTo("/any/uri");
 
-    	verify(pageResult).redirect("/any/uri");
+    	verify(pageResult).redirectTo("/any/uri");
 	}
 
 	private <T extends View> T mockResult(Class<T> view) {
@@ -202,5 +207,28 @@ public class DefaultResultTest {
 
     	verify(status).movedPermanentlyTo(RandomController.class);
 
+    }
+
+
+    class Account {
+    	
+    }
+
+    @Test
+    public void shouldIncludeExtractedNameWhenSimplyIncluding() throws Exception {
+
+    	Account account = new Account();
+    	when(extractor.nameFor(Account.class)).thenReturn("account");
+    	
+    	result.include(account);
+
+    	verify(request).setAttribute("account", account);
+
+    }
+    
+    @Test
+    public void shouldNotIncludeTheAttributeWhenTheValueIsNull() throws Exception {
+    	result.include(null);
+    	verify(request, never()).setAttribute(anyString(), anyObject());
     }
 }

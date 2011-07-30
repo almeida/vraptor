@@ -27,10 +27,10 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import br.com.caelum.vraptor.InterceptionException;
-import br.com.caelum.vraptor.extra.ForwardToDefaultViewInterceptor;
 import br.com.caelum.vraptor.interceptor.DeserializingInterceptor;
 import br.com.caelum.vraptor.interceptor.ExecuteMethodInterceptor;
 import br.com.caelum.vraptor.interceptor.FlashInterceptor;
+import br.com.caelum.vraptor.interceptor.ForwardToDefaultViewInterceptor;
 import br.com.caelum.vraptor.interceptor.InstantiateInterceptor;
 import br.com.caelum.vraptor.interceptor.InterceptorListPriorToExecutionExtractor;
 import br.com.caelum.vraptor.interceptor.OutjectResult;
@@ -43,13 +43,11 @@ public class DefaultRequestExecutionTest {
 
     @Mock private InterceptorStack stack;
     private DefaultRequestExecution execution;
-    private InstantiateInterceptor instantiator;
 
     @Before
     public void setup() {
     	MockitoAnnotations.initMocks(this);
-        this.instantiator = new InstantiateInterceptor(null);
-        this.execution = new DefaultRequestExecution(stack, instantiator);
+        this.execution = new DefaultRequestExecution(stack);
     }
 
     @Test
@@ -63,7 +61,7 @@ public class DefaultRequestExecutionTest {
         order.verify(stack).add(ResourceLookupInterceptor.class);
         order.verify(stack).add(FlashInterceptor.class);
         order.verify(stack).add(InterceptorListPriorToExecutionExtractor.class);
-        order.verify(stack).add(instantiator);
+        order.verify(stack).add(InstantiateInterceptor.class);
         order.verify(stack).add(ParametersInstantiatorInterceptor.class);
         order.verify(stack).add(DeserializingInterceptor.class);
         order.verify(stack).add(ExecuteMethodInterceptor.class);

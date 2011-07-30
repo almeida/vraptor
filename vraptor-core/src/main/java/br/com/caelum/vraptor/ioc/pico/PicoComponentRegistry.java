@@ -17,7 +17,9 @@
 
 package br.com.caelum.vraptor.ioc.pico;
 
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 
 import javax.servlet.http.HttpSession;
@@ -32,13 +34,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import br.com.caelum.vraptor.core.RequestInfo;
-import br.com.caelum.vraptor.http.route.Router;
 import br.com.caelum.vraptor.ioc.AbstractComponentRegistry;
 import br.com.caelum.vraptor.ioc.ApplicationScoped;
 import br.com.caelum.vraptor.ioc.ComponentFactory;
 import br.com.caelum.vraptor.ioc.ComponentFactoryIntrospector;
 import br.com.caelum.vraptor.ioc.PrototypeScoped;
-import br.com.caelum.vraptor.ioc.RequestScoped;
 import br.com.caelum.vraptor.ioc.SessionScoped;
 
 /**
@@ -74,23 +74,22 @@ public class PicoComponentRegistry extends AbstractComponentRegistry {
     	return appContainer;
     }
 
-    @SuppressWarnings("unchecked")
     public void register(Class<?> requiredType, Class<?> type) {
         logger.debug("Registering " + requiredType.getName() + " with " + type.getName());
 
-        boolean overriding = alreadyRegistered(requiredType);
-        if (overriding) {
+        if (alreadyRegistered(requiredType)) {
             logger.debug("Overriding interface " + requiredType.getName() + " with " + type.getName());
         }
-        if (type.isAnnotationPresent(ApplicationScoped.class)) {
+        registerOnScope(requiredType, type);
+
+        registerComponentFactory(requiredType, type);
+        checkInitialization(requiredType, type);
+    }
+
+	private void registerOnScope(Class<?> requiredType, Class<?> type) {
+		if (type.isAnnotationPresent(ApplicationScoped.class)) {
             logger.debug("Registering " + type.getName() + " as an application component");
             this.applicationScoped.put(requiredType, type);
-            if (initialized) {
-                logger.warn("VRaptor was already initialized, the contexts were created but you are registering a component."
-                        + "This is nasty. The original component might already be in use."
-                        + "Avoid doing it: " + requiredType.getName());
-                this.appContainer.addComponent(requiredType, type);
-            }
         } else if (type.isAnnotationPresent(SessionScoped.class)) {
             logger.debug("Registering " + type.getName() + " as a session component");
             this.sessionScoped.put(requiredType, type);
@@ -99,33 +98,41 @@ public class PicoComponentRegistry extends AbstractComponentRegistry {
         	this.prototypeScoped.put(requiredType, type);
         } else {
             // default behaviour: even without @RequestScoped
-            if (!type.isAnnotationPresent(RequestScoped.class)) {
-                logger.info("Class being registered as @RequestScoped, since there is no Scope annotation " + type);
-            }
             logger.debug("Registering " + type.getName() + " as a request component");
             this.requestScoped.put(requiredType, type);
         }
+	}
 
-        if (ComponentFactory.class.isAssignableFrom(type) && !requiredType.equals(ComponentFactory.class)) {
+	private void checkInitialization(Class<?> requiredType, Class<?> type) {
+		if (type.isAnnotationPresent(ApplicationScoped.class) && initialized) {
+		    logger.warn("VRaptor was already initialized, the contexts were created but you are registering a component."
+		            + "This is nasty. The original component might already be in use."
+		            + "Avoid doing it: " + requiredType.getName());
+		    this.appContainer.addComponent(requiredType, type);
+
+		    if (isComponentFactory(requiredType, type)) {
+		    	Class<?> targetType = new ComponentFactoryIntrospector().targetTypeForComponentFactory(type);
+		    	this.appContainer.addAdapter(new PicoComponentAdapter(targetType, (Class<? extends ComponentFactory<?>>) type));
+		    }
+		}
+	}
+
+	private void registerComponentFactory(Class<?> requiredType, Class<?> type) {
+		if (isComponentFactory(requiredType, type)) {
             componentFactoryRegistry.register((Class<? extends ComponentFactory<?>>) type);
-
-            if (type.isAnnotationPresent(ApplicationScoped.class) && initialized) {
-                if (initialized) {
-                    logger.warn("VRaptor was already initialized, the contexts were created but you are registering a component."
-                            + "This is nasty. The original component might already be in use."
-                            + "Avoid doing it: " + requiredType.getName());
-                    Class<?> targetType = new ComponentFactoryIntrospector().targetTypeForComponentFactory(type);
-                    this.appContainer.addAdapter(new PicoComponentAdapter(targetType, (Class<? extends ComponentFactory<?>>) type));
-                }
-            }
         }
-    }
+	}
+
+	private boolean isComponentFactory(Class<?> requiredType, Class<?> type) {
+		return ComponentFactory.class.isAssignableFrom(type) && !requiredType.equals(ComponentFactory.class);
+	}
 
     /**
      * Registers all application scoped elements into the container.
      */
     public void init() {
         logger.info("Initializing VRaptor IoC Container implementation based on PicoContainer");
+
         for (Map.Entry<Class<?>, Class<?>> entry : applicationScoped.entrySet()) {
             logger.debug("Initializing application scope with key: " + entry.getKey() + ", for component: " +
                     entry.getValue());
@@ -140,18 +147,20 @@ public class PicoComponentRegistry extends AbstractComponentRegistry {
     }
 
     PicoBasedContainer provideRequestContainer(RequestInfo request) {
-        HttpSession session = request.getRequest().getSession();
-        MutablePicoContainer sessionScope = (MutablePicoContainer) session.getAttribute(CONTAINER_SESSION_KEY);
-        if (sessionScope == null) {
-            sessionScope = createSessionContainer(session);
+        MutablePicoContainer parentContainer;
+
+        if (sessionScoped.isEmpty()) {
+        	logger.debug("There's no @SessionScoped component, so skipping session container creation");
+        	parentContainer = this.appContainer;
+        } else {
+        	parentContainer = getSessionContainer(request);
         }
 
-        if (logger.isDebugEnabled()) {
-            logger.debug("Request components are " + requestScoped);
-        }
+        logger.debug("Request components are {}", requestScoped);
 
-        MutablePicoContainer requestContainer = new DefaultPicoContainer(new Caching(), new JavaEE5LifecycleStrategy(
-                new NullComponentMonitor()), sessionScope);
+        MutablePicoContainer requestContainer = new DefaultPicoContainer(new Caching(),
+        			new JavaEE5LifecycleStrategy(new NullComponentMonitor()), parentContainer);
+        requestContainer.addComponent(HttpSession.class, request.getRequest().getSession());
 
         for (Map.Entry<Class<?>, Class<?>> entry : requestScoped.entrySet()) {
             requestContainer.addComponent(entry.getKey(), entry.getValue());
@@ -163,8 +172,17 @@ public class PicoComponentRegistry extends AbstractComponentRegistry {
 
         registerComponentFactories(requestContainer, componentFactoryRegistry.getRequestMap());
 
-        return new PicoBasedContainer(requestContainer, this.appContainer.getComponent(Router.class));
+        return new PicoBasedContainer(requestContainer);
     }
+
+	private MutablePicoContainer getSessionContainer(RequestInfo request) {
+		HttpSession session = request.getRequest().getSession();
+        MutablePicoContainer sessionScope = (MutablePicoContainer) session.getAttribute(CONTAINER_SESSION_KEY);
+        if (sessionScope == null) {
+            sessionScope = createSessionContainer(session);
+        }
+		return sessionScope;
+	}
 
     private boolean alreadyRegistered(Class<?> interfaceType) {
         for (Map<Class<?>, Class<?>> scope : new Map[]{applicationScoped, sessionScoped, requestScoped}) {
@@ -183,9 +201,7 @@ public class PicoComponentRegistry extends AbstractComponentRegistry {
         sessionContainer.addComponent(HttpSession.class, session);
         session.setAttribute(CONTAINER_SESSION_KEY, sessionContainer);
 
-        if (logger.isDebugEnabled()) {
-            logger.debug("Session components are " + sessionScoped);
-        }
+        logger.debug("Session components are {}", sessionScoped);
 
         for (Map.Entry<Class<?>, Class<?>> entry : sessionScoped.entrySet()) {
             sessionContainer.addComponent(entry.getKey(), entry.getValue());
@@ -203,11 +219,19 @@ public class PicoComponentRegistry extends AbstractComponentRegistry {
      * @param container
      * @param componentFactoryMap
      */
-    @SuppressWarnings("unchecked")
     private void registerComponentFactories(MutablePicoContainer container, Map<Class<?>, Class<? extends ComponentFactory>> componentFactoryMap) {
         for (Class<?> targetType : componentFactoryMap.keySet()) {
             container.addAdapter(new PicoComponentAdapter(targetType, componentFactoryMap.get(targetType)));
         }
     }
+
+    public Collection<Class<?>> getAllRegisteredApplicationScopedComponents() {
+    	Collection<Class<?>> components = new HashSet<Class<?>>();
+    	components.addAll(applicationScoped.values());
+    	components.addAll(sessionScoped.values());
+    	components.addAll(requestScoped.values());
+    	components.addAll(prototypeScoped.values());
+		return components;
+	}
 
 }

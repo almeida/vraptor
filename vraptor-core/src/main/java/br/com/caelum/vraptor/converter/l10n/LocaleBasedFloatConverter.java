@@ -17,6 +17,8 @@
 
 package br.com.caelum.vraptor.converter.l10n;
 
+import static com.google.common.base.Strings.isNullOrEmpty;
+
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.text.MessageFormat;
@@ -27,8 +29,7 @@ import java.util.ResourceBundle;
 import br.com.caelum.vraptor.Convert;
 import br.com.caelum.vraptor.Converter;
 import br.com.caelum.vraptor.converter.ConversionError;
-import br.com.caelum.vraptor.converter.JstlWrapper;
-import br.com.caelum.vraptor.core.RequestInfo;
+import br.com.caelum.vraptor.core.Localization;
 import br.com.caelum.vraptor.ioc.RequestScoped;
 
 /**
@@ -44,21 +45,19 @@ import br.com.caelum.vraptor.ioc.RequestScoped;
 public class LocaleBasedFloatConverter
     implements Converter<Float> {
 
-    private final JstlWrapper jstlWrapper = new JstlWrapper();
-    private final RequestInfo request;
+    private final Localization localization;
 
-    public LocaleBasedFloatConverter(RequestInfo request) {
-        this.request = request;
+    public LocaleBasedFloatConverter(Localization localization) {
+        this.localization = localization;
     }
 
     public Float convert(String value, Class<? extends Float> type, ResourceBundle bundle) {
-        // skip null of empty values
-        if (value == null || value.trim().length() == 0) {
+        if (isNullOrEmpty(value)) {
             return null;
         }
 
         try {
-            final Locale locale = jstlWrapper.findLocale(request);
+            final Locale locale = localization.getLocale();
             DecimalFormat fmt = new DecimalFormat("##0,00", new DecimalFormatSymbols(locale));
 
             // DecimalFormat.parse can return long values, so it's more securely call floatValue

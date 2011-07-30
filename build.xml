@@ -32,7 +32,9 @@
 		<ant dir="vraptor-example-compatibility" target="update-jars"/>
 		<ant dir="vraptor-blank-project" target="update-jars"/>
 		<ant dir="vraptor-plugin-gae" target="artifacts"/>
+		<ant dir="vraptor-plugin-flex" target="libs"/>
 		<ant dir="vraptor-blank-project-gae" target="update-jars"/>
+		<ant dir="vraptor-blank-project-scala" target="update-jars"/>
 		<ant dir="vraptor-mydvds" target="update-jars"/>
 	</target>
 
@@ -47,7 +49,7 @@
 		<move file="vraptor-site/site.war" tofile="target/vraptor-site-${vraptor.version}.war" />
 	</target>
 	
-	<target name="zips-vraptor">
+	<target name="zips-vraptor" depends="zips-site">
 		<mkdir dir="target"/>
 		<move file="vraptor-core/target/vraptor-${vraptor.version}.jar" tofile="target/vraptor-${vraptor.version}.jar" />
 		<zip destfile="target/vraptor-${vraptor.version}.zip">

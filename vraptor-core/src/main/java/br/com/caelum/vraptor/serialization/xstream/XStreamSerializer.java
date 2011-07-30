@@ -15,10 +15,13 @@
  */
 package br.com.caelum.vraptor.serialization.xstream;
 
+import static com.google.common.base.Preconditions.checkNotNull;
+
 import java.io.Writer;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.lang.reflect.TypeVariable;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
@@ -116,9 +119,7 @@ public class XStreamSerializer implements SerializerBuilder {
 	}
 
 	private void preConfigure(Object obj,String alias) {
-		if (obj == null) {
-			throw new NullPointerException("You can't serialize null objects");
-		}
+		checkNotNull(obj, "You can't serialize null objects");
 
 		xstream.processAnnotations(obj.getClass());
 
@@ -127,25 +128,45 @@ public class XStreamSerializer implements SerializerBuilder {
 			alias = extractor.nameFor(rootClass);
 		}
 
+		setRoot(obj);
+
+		setAlias(obj, alias);
+	}
+
+	private void setRoot(Object obj) {
 		if (Collection.class.isInstance(obj)) {
-			List<Object> list = new ArrayList<Object>((Collection<?>)obj);
-			elementTypes = findElementTypes(list);
-			for (Class<?> type : elementTypes) {
-				excludeNonPrimitiveFields(type);
-			}
-			this.root = list;
+			this.root = normalizeList(obj);
 		} else {
 			Class<?> type = rootClass;
 			excludeNonPrimitiveFields(type);
 			this.root = obj;
 		}
+	}
 
+	private Collection<Object> normalizeList(Object obj) {
+		Collection<Object> list;
+		if (hasDefaultConverter()) {
+			list = new ArrayList<Object>((Collection<?>)obj);
+		} else {
+			list = (Collection<Object>) obj;
+		}
+		elementTypes = findElementTypes(list);
+		for (Class<?> type : elementTypes) {
+			excludeNonPrimitiveFields(type);
+		}
+		return list;
+	}
+
+	private boolean hasDefaultConverter() {
+		return xstream.getConverterLookup().lookupConverterForType(rootClass).equals(xstream.getConverterLookup().lookupConverterForType(Object.class));
+	}
+
+	private void setAlias(Object obj, String alias) {
 		if (alias != null) {
-			if (Collection.class.isInstance(obj)) {
+			if (Collection.class.isInstance(obj) && (List.class.isInstance(obj) || hasDefaultConverter())) {
 				xstream.alias(alias, List.class);
-			} else {
-				xstream.alias(alias, obj.getClass());
 			}
+			xstream.alias(alias, obj.getClass());
 		}
 	}
 
@@ -159,7 +180,7 @@ public class XStreamSerializer implements SerializerBuilder {
 		return this;
 	}
 
-	private Set<Class<?>> findElementTypes(List<Object> list) {
+	private Set<Class<?>> findElementTypes(Collection<Object> list) {
 		Set<Class<?>> set = new HashSet<Class<?>>();
 		for (Object element : list) {
 			if (element != null && !isPrimitive(element.getClass())) {
@@ -201,10 +222,18 @@ public class XStreamSerializer implements SerializerBuilder {
 	private Class<?> getActualType(Type genericType) {
 		if (genericType instanceof ParameterizedType) {
 			ParameterizedType type = (ParameterizedType) genericType;
+
 			if (isCollection(type)) {
-				return (Class<?>) type.getActualTypeArguments()[0];
+				Type actualType = type.getActualTypeArguments()[0];
+
+				if (actualType instanceof TypeVariable<?>) {
+					return (Class<?>) type.getRawType();
+				}
+
+				return (Class<?>) actualType;
 			}
 		}
+
 		return (Class<?>) genericType;
 	}
 
@@ -233,7 +262,6 @@ public class XStreamSerializer implements SerializerBuilder {
 	private void registerProxyInitializer() {
 		xstream.registerConverter(new Converter() {
 
-			@SuppressWarnings("unchecked")
 			public boolean canConvert(Class clazz) {
 				return initializer.isProxy(clazz);
 			}

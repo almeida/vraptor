@@ -21,10 +21,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import br.com.caelum.vraptor.InterceptionException;
-import br.com.caelum.vraptor.extra.ForwardToDefaultViewInterceptor;
 import br.com.caelum.vraptor.interceptor.DeserializingInterceptor;
+import br.com.caelum.vraptor.interceptor.ExceptionHandlerInterceptor;
 import br.com.caelum.vraptor.interceptor.ExecuteMethodInterceptor;
 import br.com.caelum.vraptor.interceptor.FlashInterceptor;
+import br.com.caelum.vraptor.interceptor.ForwardToDefaultViewInterceptor;
 import br.com.caelum.vraptor.interceptor.InstantiateInterceptor;
 import br.com.caelum.vraptor.interceptor.InterceptorListPriorToExecutionExtractor;
 import br.com.caelum.vraptor.interceptor.OutjectResult;
@@ -39,18 +40,18 @@ import br.com.caelum.vraptor.ioc.PrototypeScoped;
  * this behaviour can be change by providing your own RequestExecution.
  *
  * @author Guilherme Silveira
+ * @deprecated This class is deprecated. If you extend a request execution, consider using @Intercepts(after=..., before=...) instead.
  */
+@Deprecated
 @PrototypeScoped
 public class DefaultRequestExecution implements RequestExecution {
 
 	private static final Logger logger = LoggerFactory.getLogger(DefaultRequestExecution.class);
 
     private final InterceptorStack interceptorStack;
-    private final InstantiateInterceptor instantiator;
 
-    public DefaultRequestExecution(InterceptorStack interceptorStack, InstantiateInterceptor instantiator) {
+    public DefaultRequestExecution(InterceptorStack interceptorStack) {
         this.interceptorStack = interceptorStack;
-        this.instantiator = instantiator;
     }
 
     public void execute() throws InterceptionException {
@@ -60,9 +61,10 @@ public class DefaultRequestExecution implements RequestExecution {
         interceptorStack.add(ResourceLookupInterceptor.class);
         interceptorStack.add(FlashInterceptor.class);
         interceptorStack.add(InterceptorListPriorToExecutionExtractor.class);
-        interceptorStack.add(instantiator);
+        interceptorStack.add(InstantiateInterceptor.class);
         interceptorStack.add(ParametersInstantiatorInterceptor.class);
         interceptorStack.add(DeserializingInterceptor.class);
+        interceptorStack.add(ExceptionHandlerInterceptor.class);
         interceptorStack.add(ExecuteMethodInterceptor.class);
         interceptorStack.add(OutjectResult.class);
         interceptorStack.add(DownloadInterceptor.class);

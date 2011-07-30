@@ -80,7 +80,7 @@
 		
 									<li><a class="link_toc" href="../../documentation/dependency-injection/">9. Dependency injection</a></li>
 		
-									<li><a class="link_toc" href="../../documentation/downloading/">10. Downloading</a></li>
+									<li><a class="link_toc" href="../../documentation/download-and-upload/">10. Download and Upload</a></li>
 		
 									<li><a class="link_toc" href="../../documentation/utility-components/">11. Utility Components</a></li>
 		
@@ -92,9 +92,17 @@
 		
 									<li><a class="link_toc" href="../../documentation/scala/">15. Scala</a></li>
 		
-									<li><a class="link_toc" href="../../documentation/changelog/">16. ChangeLog</a></li>
+									<li><a class="link_toc" href="../../documentation/optimizations/">16. Optimizations</a></li>
 		
-									<li><a class="link_toc" href="../../documentation/migrating-from-vraptor2-to-vraptor3/">17. Migrating from VRaptor2 to VRaptor3</a></li>
+									<li><a class="link_toc" href="../../documentation/vraptor-scaffold/">17. VRaptor Scaffold</a></li>
+		
+									<li><a class="link_toc" href="../../documentation/exception-handling/">18. Exception handling</a></li>
+		
+									<li><a class="link_toc" href="../../documentation/how-to-contribute-to-vraptor/">19. How to contribute to VRaptor</a></li>
+		
+									<li><a class="link_toc" href="../../documentation/changelog/">20. ChangeLog</a></li>
+		
+									<li><a class="link_toc" href="../../documentation/migrating-from-vraptor2-to-vraptor3/">21. Migrating from VRaptor2 to VRaptor3</a></li>
 		
                 </ol>
             </div><!-- submenu-->
@@ -334,7 +342,7 @@ Before adding the product, we need to check if it is a valid product - which has
 <strong>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span><span class="java10">that</span><span class="java8">(</span><span class="java10">!product.getName</span><span class="java8">()</span><span class="java10">.isEmpty</span><span class="java8">()</span><span class="java10">, </span><span class="java5">&#34;product.name&#34;</span><span class="java10">, </span><span class="java5">&#34;nome.empty&#34;</span><span class="java8">)</span><span class="java10">;<br /></strong>
 <strong>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; that</span><span class="java8">(</span><span class="java10">product.getPrice</span><span class="java8">() </span><span class="java10">&gt; </span><span class="java7">0</span><span class="java10">, </span><span class="java5">&#34;product.price&#34;</span><span class="java10">, </span><span class="java5">&#34;price.invalid&#34;</span><span class="java8">)</span><span class="java10">;<br /></strong>
 <strong>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span><span class="java8">}})</span><span class="java10">;<br /></strong>
-<strong>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; validator.onErrorUse</span><span class="java8">(</span><span class="java10">Results.page</span><span class="java8">())</span><span class="java10">.of</span><span class="java8">(</span><span class="java10">ProductsController.</span><span class="java4">class</span><span class="java8">)</span><span class="java10">.form</span><span class="java8">()</span><span class="java10">;<br /></strong>
+<strong>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; validator.onErrorUsePageOf</span><span class="java8">(</span><span class="java10">ProductsController.</span><span class="java4">class</span><span class="java8">)</span><span class="java10">.form</span><span class="java8">()</span><span class="java10">;<br /></strong>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <br />
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; dao.add</span><span class="java8">(</span><span class="java10">product</span><span class="java8">)</span><span class="java10">;<br />
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; result.redirectTo</span><span class="java8">(</span><span class="java10">ProductsController.</span><span class="java4">class</span><span class="java8">)</span><span class="java10">.list</span><span class="java8">()</span><span class="java10">;<br />
@@ -442,24 +450,19 @@ are allowed to call that logic - @Get, @Post, @Delete and @Put.</span>
 <span class="java4">public class </span><span class="java10">ProductsController </span><span class="java8">{<br />
 &nbsp;&nbsp;&nbsp; </span><span class="java3">//...<br />
 &nbsp;&nbsp;&nbsp; <br />
-&nbsp;&nbsp;&nbsp; </span><span class="java16">@Get<br />
-&nbsp;&nbsp;&nbsp; @Path</span><span class="java8">(</span><span class="java5">&#34;/products&#34;</span><span class="java8">)<br />
+&nbsp;&nbsp;&nbsp; </span><span class="java16">@Get @Path</span><span class="java8">(</span><span class="java5">&#34;/products&#34;</span><span class="java8">)<br />
 &nbsp;&nbsp;&nbsp; </span><span class="java4">public </span><span class="java10">List&lt;Product&gt; list</span><span class="java8">() {</span><span class="java10">...</span><span class="java8">}<br />
 &nbsp;&nbsp;&nbsp; <br />
-&nbsp;&nbsp;&nbsp; </span><span class="java16">@Post<br />
-&nbsp;&nbsp;&nbsp; @Path</span><span class="java8">(</span><span class="java5">&#34;/products&#34;</span><span class="java8">)<br />
+&nbsp;&nbsp;&nbsp; </span><span class="java16">@Post</span><span class="java8">(</span><span class="java5">&#34;/products&#34;</span><span class="java8">)<br />
 &nbsp;&nbsp;&nbsp; </span><span class="java4">public </span><span class="java9">void </span><span class="java10">add</span><span class="java8">(</span><span class="java10">Product product</span><span class="java8">) {</span><span class="java10">...</span><span class="java8">}<br />
 <br />
-&nbsp;&nbsp;&nbsp; </span><span class="java16">@Get<br />
-&nbsp;&nbsp;&nbsp; @Path</span><span class="java8">(</span><span class="java5">&#34;/products/{product.id}&#34;</span><span class="java8">)<br />
+&nbsp;&nbsp;&nbsp; </span><span class="java16">@Get</span><span class="java8">(</span><span class="java5">&#34;/products/{product.id}&#34;</span><span class="java8">)<br />
 &nbsp;&nbsp;&nbsp; </span><span class="java4">public </span><span class="java9">void </span><span class="java10">view</span><span class="java8">(</span><span class="java10">Product product</span><span class="java8">) {</span><span class="java10">...</span><span class="java8">}<br />
 &nbsp;&nbsp;&nbsp; <br />
-&nbsp;&nbsp;&nbsp; </span><span class="java16">@Put<br />
-&nbsp;&nbsp;&nbsp; @Path</span><span class="java8">(</span><span class="java5">&#34;/products/{product.id}&#34;</span><span class="java8">)<br />
+&nbsp;&nbsp;&nbsp; </span><span class="java16">@Put</span><span class="java8">(</span><span class="java5">&#34;/products/{product.id}&#34;</span><span class="java8">)<br />
 &nbsp;&nbsp;&nbsp; </span><span class="java4">public </span><span class="java9">void </span><span class="java10">update</span><span class="java8">(</span><span class="java10">Product product</span><span class="java8">) {</span><span class="java10">...</span><span class="java8">}<br />
 &nbsp;&nbsp;&nbsp; <br />
-&nbsp;&nbsp;&nbsp; </span><span class="java16">@Delete<br />
-&nbsp;&nbsp;&nbsp; @Path</span><span class="java8">(</span><span class="java5">&#34;/products/{product.id}&#34;</span><span class="java8">)<br />
+&nbsp;&nbsp;&nbsp; </span><span class="java16">@Delete</span><span class="java8">(</span><span class="java5">&#34;/products/{product.id}&#34;</span><span class="java8">)<br />
 &nbsp;&nbsp;&nbsp; </span><span class="java4">public </span><span class="java9">void </span><span class="java10">remove</span><span class="java8">(</span><span class="java10">Product product</span><span class="java8">) {</span><span class="java10">...</span><span class="java8">}<br />
 &nbsp;&nbsp;&nbsp; <br />
 }</span></code></div>
@@ -547,6 +550,7 @@ as follows:</span>
                     <li><a href="../../en/vraptor2.jsp">vraptor2</a></li>
                 </ul>
                 <p><a href="http://www.apache.org/licenses/LICENSE-2.0">Apache 2.0 License</a> - VRaptor ©2009 Caelum - Ensino e Inovação</p>
+                <p>Profiled with <a href="http://www.ej-technologies.com/products/jprofiler/overview.html">JProfiler</a></p>
             </div><!-- footnote-->
         </div><!-- footer content -->
         <a id="signature" href="mailto:lokidg@gmail.com">loki|design</a>

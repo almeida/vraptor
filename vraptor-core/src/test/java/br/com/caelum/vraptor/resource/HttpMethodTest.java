@@ -35,7 +35,7 @@ public class HttpMethodTest {
 	}
 
 	@Test(expected = IllegalArgumentException.class)
-	public void shouldThrowIllegalArgumentExceptionForNotKnowHttpMethodsForRequestParameter() throws Exception {
+	public void shouldThrowExceptionForNotKnowHttpMethodsForRequestParameter() throws Exception {
 		mockery.checking(new Expectations() {
 			{
 				one(request).getParameter("_method");
@@ -76,7 +76,7 @@ public class HttpMethodTest {
 	}
 
 	@Test(expected = IllegalArgumentException.class)
-	public void shouldThrowIllegalArgumentExceptionForNotKnowHttpMethods() throws Exception {
+	public void shouldThrowExceptionForNotKnowHttpMethods() throws Exception {
 		mockery.checking(new Expectations() {
 			{
 				one(request).getParameter("_method");

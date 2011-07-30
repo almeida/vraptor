@@ -1,5 +1,45 @@
 [chapter View e Ajax]
 
+[section Compartilhando objetos com a view]
+
+Para registrar objetos a serem acessados na view, usamos o método include:
+
+[java]
+@Resource
+class ClientController {
+	private final Result result;
+	public ClientController(Result result) {
+		this.result = result;
+	}
+	
+	public void busca(int id) {
+		result.include("mensagem", "Alguma mensagem");
+		result.include("cliente", new Cliente(id));
+	}
+}
+[/java]
+
+Agora as variáveis "mensagem" e "cliente" estão disponíveis para uso em seu template engine.
+
+É possível registrar o objeto através da invocação do método include com um único argumento:
+
+[java]
+@Resource
+class ClientController {
+	private final Result result;
+	public ClientController(Result result) {
+		this.result = result;
+	}
+	
+	public void busca(int id) {
+		result.include("Alguma mensagem").include(new Cliente(id));
+	}
+}
+[/java]
+
+Nesse caso a primeira invocação registra a chave "string" e na segunda a chave "cliente".
+Você pode alterar o comportamento de convenção de chaves através de seu próprio TypeNameExtractor.
+
 [section Custom PathResolver]
 Por padrão, para renderizar suas views, o VRaptor segue a convenção:
 
@@ -65,6 +105,7 @@ Por padrão existem estes tipos de views implementadas:
 	* Results.page(), que vai redirecionar diretamente para uma página, podendo ser um
 	jsp, um html, ou qualquer uri relativa ao web application dir, ou ao contexto da aplicação.
 	* Results.http(), que manda informações do protocolo HTTP como status codes e headers.
+	* Results.status(), manda status codes com mais informações.
 	* Results.referer(), que usa o header Referer para fazer redirects ou forwards.
 	* Results.nothing(), apenas retorna o código de sucesso (HTTP 200 OK).
 	* Results.xml(), serializa objetos em xml.
@@ -99,16 +140,18 @@ Além disso, se o redirecionamento é para um método do mesmo controller, podem
 
 [section Redirecionamento e forward]
 
-No VRaptor3, podemos tanto redirecionar ou fazermos um forward do usuário para uma outra lógica ou um jsp.
-A grande diferença entre fazer um redirecionamento (redirect) e um forward é que o redirecionamento acontece
-no lado do cliente, e o forward acontece no lado do servidor.
+No VRaptor3, podemos tanto realizar um redirect ou um forward do usuário para uma outra lógica ou um jsp.
+Apesar de serem conceitos da API de Servlets, vale a pena relembrar a diferença: o redirecionamento acontece
+no lado do cliente, através de códigos HTTP que farão o browser acessar uma nova URL; já o forward acontece
+no lado do servidor, totalmente transparente para o cliente/browser.
 
-Um bom exemplo de uso do redirect, é o padrão 'redirect-after-post', por exemplo, quando você adiciona um cliente,
-e quer retornar para a listagem dos clientes, porém, não quer permitir que o usuário atualize a página (F5) e 
-reenvie toda a requisição, acarretando em dados duplicados.
+Um bom exemplo de uso do redirect é no chamado 'redirect-after-post'. Por exemplo: quando você adiciona um cliente e que,
+após o formulário submetido, o cliente seja retornado para a página de listagem de clientes. Fazendo isso
+com redirect, impedimos que o usuário atualize a página (F5) e reenvie toda a requisição, acarretando em dados duplicados.
 
 No caso do forward, um exemplo de uso é quando você possui uma validação e essa validação falhou, geralmente
-você quer que o usuário continue na mesma tela do formulário com os dados da requisição preenchidos.
+você quer que o usuário continue na mesma tela do formulário com os dados da requisição preenchidos, mas internamente
+você vai fazer o forward para outra lógica de negócios (a que prepara os dados necessários para o formulário).
 
 [box Escopo Flash automático]
 Se você adicionar objetos no Result e fizer um Redirect, esses objetos estarão disponíveis na

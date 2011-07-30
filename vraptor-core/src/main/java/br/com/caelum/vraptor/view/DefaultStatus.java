@@ -17,9 +17,12 @@
 
 package br.com.caelum.vraptor.view;
 
+import static br.com.caelum.vraptor.view.Results.representation;
+
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.EnumSet;
+import java.util.List;
 
 import javax.servlet.http.HttpServletResponse;
 
@@ -138,6 +141,11 @@ public class DefaultStatus implements Status {
 		sendError(HttpServletResponse.SC_BAD_REQUEST, message);
 	}
 
+	public void badRequest(List<?> errors) {
+		result.use(representation()).from(errors, "errors").serialize();
+		response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+	}
+
 	public void forbidden(String message) {
 		sendError(HttpServletResponse.SC_FORBIDDEN, message);
 	}
@@ -148,6 +156,15 @@ public class DefaultStatus implements Status {
 
 	public void notAcceptable() {
 		sendError(HttpServletResponse.SC_NOT_ACCEPTABLE);
+	}
+
+	public void accepted(){
+		response.setStatus(HttpServletResponse.SC_ACCEPTED );
+		result.use(Results.nothing());
+	}
+
+	public void notModified() {
+		response.setStatus(HttpServletResponse.SC_NOT_MODIFIED);
 	}
 
 }

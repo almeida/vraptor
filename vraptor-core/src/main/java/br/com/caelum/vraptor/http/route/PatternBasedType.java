@@ -17,11 +17,17 @@
 
 package br.com.caelum.vraptor.http.route;
 
+import static com.google.common.base.Objects.equal;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * @deprecated Use @Path instead.
+ */
+@Deprecated
 public class PatternBasedType {
 
 	private final List<String> parameters = new ArrayList<String>();
@@ -100,14 +106,7 @@ public class PatternBasedType {
 			return false;
 		}
 		PatternBasedType other = (PatternBasedType) obj;
-		if (originalPattern == null) {
-			if (other.originalPattern != null) {
-				return false;
-			}
-		} else if (!originalPattern.equals(other.originalPattern)) {
-			return false;
-		}
-		return true;
+		return equal(originalPattern, other.originalPattern);
 	}
 
 

@@ -16,6 +16,8 @@
  */
 package br.com.caelum.vraptor.converter;
 
+import static com.google.common.base.Strings.isNullOrEmpty;
+
 import java.text.DateFormat;
 import java.text.MessageFormat;
 import java.text.ParseException;
@@ -27,7 +29,7 @@ import java.util.ResourceBundle;
 
 import br.com.caelum.vraptor.Convert;
 import br.com.caelum.vraptor.Converter;
-import br.com.caelum.vraptor.core.RequestInfo;
+import br.com.caelum.vraptor.core.Localization;
 import br.com.caelum.vraptor.ioc.RequestScoped;
 
 /**
@@ -39,22 +41,22 @@ import br.com.caelum.vraptor.ioc.RequestScoped;
 @RequestScoped
 public class LocaleBasedCalendarConverter implements Converter<Calendar> {
 
-    private final JstlWrapper jstlWrapper = new JstlWrapper();
-
-    private final RequestInfo request;
-
-    public LocaleBasedCalendarConverter(RequestInfo request) {
-        this.request = request;
+    private final Localization localization;
+    
+    public LocaleBasedCalendarConverter(Localization localization) {
+        this.localization = localization;
     }
 
     public Calendar convert(String value, Class<? extends Calendar> type, ResourceBundle bundle) {
-        if (value == null || value.equals("")) {
+        if (isNullOrEmpty(value)) {
             return null;
         }
-        Locale locale = jstlWrapper.findLocale(request);
+        
+        Locale locale = localization.getLocale();
         if (locale == null) {
             locale = Locale.getDefault();
         }
+        
         DateFormat format = DateFormat.getDateInstance(DateFormat.SHORT, locale);
         try {
             Date date = format.parse(value);

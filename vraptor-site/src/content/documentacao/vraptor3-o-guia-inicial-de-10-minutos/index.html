@@ -84,7 +84,7 @@
 		
 									<li><a class="link_toc" href="../../documentacao/injecao-de-dependencias/">9. Injeção de dependências</a></li>
 		
-									<li><a class="link_toc" href="../../documentacao/downloading/">10. Downloading</a></li>
+									<li><a class="link_toc" href="../../documentacao/download-e-upload/">10. Download e Upload</a></li>
 		
 									<li><a class="link_toc" href="../../documentacao/componentes-utilitarios-opcionais/">11. Componentes Utilitários Opcionais</a></li>
 		
@@ -98,9 +98,17 @@
 		
 									<li><a class="link_toc" href="../../documentacao/scala/">16. Scala</a></li>
 		
-									<li><a class="link_toc" href="../../documentacao/changelog/">17. ChangeLog</a></li>
+									<li><a class="link_toc" href="../../documentacao/otimizacoes/">17. Otimizações</a></li>
 		
-									<li><a class="link_toc" href="../../documentacao/migrando-do-vraptor2-para-o-vraptor3/">18. Migrando do VRaptor2 para o VRaptor3</a></li>
+									<li><a class="link_toc" href="../../documentacao/vraptor-scaffold/">18. VRaptor Scaffold</a></li>
+		
+									<li><a class="link_toc" href="../../documentacao/exception-handling/">19. Exception handling</a></li>
+		
+									<li><a class="link_toc" href="../../documentacao/como-contribuir-com-o-vraptor/">20. Como contribuir com o VRaptor</a></li>
+		
+									<li><a class="link_toc" href="../../documentacao/changelog/">21. ChangeLog</a></li>
+		
+									<li><a class="link_toc" href="../../documentacao/migrando-do-vraptor2-para-o-vraptor3/">22. Migrando do VRaptor2 para o VRaptor3</a></li>
 		
                 </ol>
             </div><!-- submenu-->
@@ -113,7 +121,7 @@
 
 
 <h3 class="section">Começando o projeto: uma loja virtual</h3>
-	    	<span class="paragraph">Vamos come&ccedil;ar baixando o <em class="italic">vraptor-blank-project</em>, do site <a class="link" target="_blank" href="http://vraptor.caelum.com.br/download.jsp.">http://vraptor.caelum.com.br/download.jsp.</a>
+	    	<span class="paragraph">Vamos come&ccedil;ar baixando o <em class="italic">vraptor-blank-project</em>, do site <a class="link" target="_blank" href="http://vraptor.caelum.com.br/download.jsp">http://vraptor.caelum.com.br/download.jsp</a> .
 Esse blank-project j&aacute; possui a configura&ccedil;&atilde;o no <code class="inlineCode">web.xml</code> e os jars no WEB-INF/lib necess&aacute;rios para come&ccedil;ar
 a desenvolver no VRaptor.</span>
 	    	<span class="paragraph">Como voc&ecirc; pode ver, a &uacute;nica configura&ccedil;&atilde;o necess&aacute;ria no <code class="inlineCode">web.xml</code> &eacute; o filtro do VRaptor:</span>
@@ -346,7 +354,7 @@ us&aacute;-lo da seguinte maneira:</span>
 <strong>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span><span class="java10">that</span><span class="java8">(</span><span class="java10">!produto.getNome</span><span class="java8">()</span><span class="java10">.isEmpty</span><span class="java8">()</span><span class="java10">, </span><span class="java5">&#34;produto.nome&#34;</span><span class="java10">, </span><span class="java5">&#34;nome.vazio&#34;</span><span class="java8">)</span><span class="java10">;<br /></strong>
 <strong>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; that</span><span class="java8">(</span><span class="java10">produto.getPreco</span><span class="java8">() </span><span class="java10">&gt; </span><span class="java7">0</span><span class="java10">, </span><span class="java5">&#34;produto.preco&#34;</span><span class="java10">, </span><span class="java5">&#34;preco.invalido&#34;</span><span class="java8">)</span><span class="java10">;<br /></strong>
 <strong>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span><span class="java8">}})</span><span class="java10">;<br /></strong>
-<strong>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; validator.onErrorUse</span><span class="java8">(</span><span class="java10">Results.page</span><span class="java8">())</span><span class="java10">.of</span><span class="java8">(</span><span class="java10">ProdutosController.</span><span class="java4">class</span><span class="java8">)</span><span class="java10">.form</span><span class="java8">()</span><span class="java10">;<br /></strong>
+<strong>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; validator.onErrorUsePageOf</span><span class="java8">(</span><span class="java10">ProdutosController.</span><span class="java4">class</span><span class="java8">)</span><span class="java10">.form</span><span class="java8">()</span><span class="java10">;<br /></strong>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <br />
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; dao.adiciona</span><span class="java8">(</span><span class="java10">produto</span><span class="java8">)</span><span class="java10">;<br />
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; result.redirectTo</span><span class="java8">(</span><span class="java10">ProdutosController.</span><span class="java4">class</span><span class="java8">)</span><span class="java10">.lista</span><span class="java8">()</span><span class="java10">;<br />
@@ -463,24 +471,19 @@ Ent&atilde;o uma vers&atilde;o REST do nosso ProdutosController seria:</span>
 <span class="java4">public class </span><span class="java10">ProdutosController </span><span class="java8">{<br />
 &nbsp;&nbsp;&nbsp; </span><span class="java3">//...<br />
 &nbsp;&nbsp;&nbsp; <br />
-&nbsp;&nbsp;&nbsp; </span><span class="java16">@Get<br />
-&nbsp;&nbsp;&nbsp; @Path</span><span class="java8">(</span><span class="java5">&#34;/produtos&#34;</span><span class="java8">)<br />
+&nbsp;&nbsp;&nbsp; </span><span class="java16">@Get @Path</span><span class="java8">(</span><span class="java5">&#34;/produtos&#34;</span><span class="java8">)<br />
 &nbsp;&nbsp;&nbsp; </span><span class="java4">public </span><span class="java10">List&lt;Produto&gt; lista</span><span class="java8">() {</span><span class="java10">...</span><span class="java8">}<br />
 &nbsp;&nbsp;&nbsp; <br />
-&nbsp;&nbsp;&nbsp; </span><span class="java16">@Post<br />
-&nbsp;&nbsp;&nbsp; @Path</span><span class="java8">(</span><span class="java5">&#34;/produtos&#34;</span><span class="java8">)<br />
+&nbsp;&nbsp;&nbsp; </span><span class="java16">@Post</span><span class="java8">(</span><span class="java5">&#34;/produtos&#34;</span><span class="java8">)<br />
 &nbsp;&nbsp;&nbsp; </span><span class="java4">public </span><span class="java9">void </span><span class="java10">adiciona</span><span class="java8">(</span><span class="java10">Produto produto</span><span class="java8">) {</span><span class="java10">...</span><span class="java8">}<br />
 <br />
-&nbsp;&nbsp;&nbsp; </span><span class="java16">@Get<br />
-&nbsp;&nbsp;&nbsp; @Path</span><span class="java8">(</span><span class="java5">&#34;/produtos/{produto.id}&#34;</span><span class="java8">)<br />
+&nbsp;&nbsp;&nbsp; </span><span class="java16">@Get</span><span class="java8">(</span><span class="java5">&#34;/produtos/{produto.id}&#34;</span><span class="java8">)<br />
 &nbsp;&nbsp;&nbsp; </span><span class="java4">public </span><span class="java9">void </span><span class="java10">visualiza</span><span class="java8">(</span><span class="java10">Produto produto</span><span class="java8">) {</span><span class="java10">...</span><span class="java8">}<br />
 &nbsp;&nbsp;&nbsp; <br />
-&nbsp;&nbsp;&nbsp; </span><span class="java16">@Put<br />
-&nbsp;&nbsp;&nbsp; @Path</span><span class="java8">(</span><span class="java5">&#34;/produtos/{produto.id}&#34;</span><span class="java8">)<br />
+&nbsp;&nbsp;&nbsp; </span><span class="java16">@Put</span><span class="java8">(</span><span class="java5">&#34;/produtos/{produto.id}&#34;</span><span class="java8">)<br />
 &nbsp;&nbsp;&nbsp; </span><span class="java4">public </span><span class="java9">void </span><span class="java10">atualiza</span><span class="java8">(</span><span class="java10">Produto produto</span><span class="java8">) {</span><span class="java10">...</span><span class="java8">}<br />
 &nbsp;&nbsp;&nbsp; <br />
-&nbsp;&nbsp;&nbsp; </span><span class="java16">@Delete<br />
-&nbsp;&nbsp;&nbsp; @Path</span><span class="java8">(</span><span class="java5">&#34;/produtos/{produto.id}&#34;</span><span class="java8">)<br />
+&nbsp;&nbsp;&nbsp; </span><span class="java16">@Delete</span><span class="java8">(</span><span class="java5">&#34;/produtos/{produto.id}&#34;</span><span class="java8">)<br />
 &nbsp;&nbsp;&nbsp; </span><span class="java4">public </span><span class="java9">void </span><span class="java10">remove</span><span class="java8">(</span><span class="java10">Produto produto</span><span class="java8">) {</span><span class="java10">...</span><span class="java8">}<br />
 &nbsp;&nbsp;&nbsp; <br />
 }</span></code></div>
@@ -566,6 +569,7 @@ campo.senha&nbsp;<span class="texvalue">=&nbsp;Password</span></code></div>
                     <li><a href="../../vraptor2.jsp">vraptor2</a></li>
                 </ul>
                 <p><a href="http://www.apache.org/licenses/LICENSE-2.0">Licença Apache 2.0</a> - VRaptor ©2009 Caelum - Ensino e Inovação</p>
+                <p>Profiled with <a href="http://www.ej-technologies.com/products/jprofiler/overview.html">JProfiler</a></p>
             </div><!-- footnote-->
         </div><!-- footer content -->
         <a id="signature" href="mailto:lokidg@gmail.com">loki|design</a>

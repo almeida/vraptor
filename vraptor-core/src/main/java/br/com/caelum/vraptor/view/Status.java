@@ -18,6 +18,7 @@
 package br.com.caelum.vraptor.view;
 
 import java.util.EnumSet;
+import java.util.List;
 
 import br.com.caelum.vraptor.View;
 import br.com.caelum.vraptor.resource.HttpMethod;
@@ -64,6 +65,20 @@ public interface Status extends View {
 	void badRequest(String message);
 
 	/**
+	 * Returns a Bad Request (400) status
+	 *
+	 * Notifies the client that he should not try to execute the same request
+	 * again: part of its representation is somehow invalid.
+	 *
+	 * Serializes the given List as "errors", with
+	 * <pre>
+	 *    result.use(representation()).from(errors, "errors").serialize();
+	 * </pre>
+	 * @param message
+	 */
+	void badRequest(List<?> errors);
+
+	/**
 	 * Returns a Forbidden (403) status. You must specify a reason.
 	 *
 	 * @param message
@@ -84,6 +99,11 @@ public interface Status extends View {
 
 
 	void methodNotAllowed(EnumSet<HttpMethod> allowedMethods);
+
+	/**
+	 * Returns a Not Modified (304) status
+	 */
+	void notModified();
 
 	/**
 	 * Send redirect with Moved Permanently (301) Header Example:
@@ -117,5 +137,11 @@ public interface Status extends View {
 	 * @param errorMessage
 	 */
 	void notAcceptable();
+
+	
+	/**
+	 * Return Accepted (202) Status 
+	 */
+	void accepted();
 
 }
