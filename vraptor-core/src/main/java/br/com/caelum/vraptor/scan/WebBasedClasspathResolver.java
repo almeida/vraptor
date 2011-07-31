@@ -15,12 +15,16 @@
  */
 package br.com.caelum.vraptor.scan;
 
+import java.io.File;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 import javax.servlet.ServletContext;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import br.com.caelum.vraptor.config.BasicConfiguration;
 
@@ -31,6 +35,9 @@ import br.com.caelum.vraptor.config.BasicConfiguration;
  * @since 3.2
  */
 public class WebBasedClasspathResolver implements ClasspathResolver {
+	private static final Logger logger = LoggerFactory.getLogger(WebBasedClasspathResolver.class);
+	private static final String WEBINF_DIR = "/WEB-INF/classes";
+	private static final String MAVEN_DIR = "target/classes";
 
 	private final ServletContext servletContext;
 
@@ -44,10 +51,24 @@ public class WebBasedClasspathResolver implements ClasspathResolver {
 		}
 		return Thread.currentThread().getContextClassLoader();
 	}
+	
+	private String findClassesDir() {
+		String classesDirName = servletContext.getRealPath(WEBINF_DIR);
+		if (classesDirName != null) {
+			logger.info("Trying " + WEBINF_DIR);
+			File classesDir = new File(classesDirName);
+			if (!classesDir.exists()) {
+				logger.info("Trying " + MAVEN_DIR);	
+				classesDir = new File(MAVEN_DIR);
+				classesDirName = classesDir.getAbsolutePath();
+			}
+		}
+		return classesDirName;
+	}
 
 	public URL findWebInfClassesLocation() {
 		try {
-			String webInfClassesDir = servletContext.getRealPath("/WEB-INF/classes");
+			String webInfClassesDir = findClassesDir();
 			if (webInfClassesDir != null) {
 				return new URL("file:" + webInfClassesDir + "/");
 			} else {
