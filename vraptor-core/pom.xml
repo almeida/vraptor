@@ -2,7 +2,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>br.com.caelum</groupId>
 	<artifactId>vraptor</artifactId>
-	<version>3.2.0</version>
+	<version>3.2.0-a2-1</version>
 	<name>VRaptor3</name>
 	<packaging>jar</packaging>
 
@@ -348,18 +348,6 @@
 	</dependencies>
 
 	<build>
-		<sourceDirectory>vraptor-core/src/main/java</sourceDirectory>
-		<resources>
-			<resource>
-				<directory>vraptor-core/src/main/resources</directory>
-			</resource>
-		</resources>
-		<testSourceDirectory>vraptor-core/src/test/java</testSourceDirectory>
-		<testResources>
-			<testResource>
-				<directory>vraptor-core/src/test/resources</directory>
-			</testResource>
-		</testResources>
 		<plugins>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
@@ -405,7 +393,7 @@
 						</goals>
 						<configuration>
 							<sources>
-								<source>vraptor-core/src/main/asm</source>
+								<source>src/main/asm</source>
 							</sources>
 						</configuration>
 					</execution>
