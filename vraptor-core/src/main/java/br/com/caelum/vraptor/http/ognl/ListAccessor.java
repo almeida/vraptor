@@ -24,15 +24,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.ResourceBundle;
 
-import net.vidageek.mirror.dsl.Mirror;
-
 import ognl.Evaluation;
 import ognl.ListPropertyAccessor;
 import ognl.OgnlContext;
 import ognl.OgnlException;
 import br.com.caelum.vraptor.Converter;
 import br.com.caelum.vraptor.core.Converters;
-import br.com.caelum.vraptor.vraptor2.Info;
+import br.com.caelum.vraptor.proxy.Proxifier;
+import br.com.caelum.vraptor.util.StringUtils;
 
 /**
  * This list accessor is responsible for setting null values up to the list
@@ -79,7 +78,7 @@ public class ListAccessor extends ListPropertyAccessor {
 
 			Type genericType = extractGenericType(ctx, target);
 
-            Class type = getActualType(genericType);
+		Class type = getActualType(genericType);
 
 			// suckable ognl doesnt support dependency injection or
 			// anything alike... just that suckable context... therefore
@@ -97,12 +96,12 @@ public class ListAccessor extends ListPropertyAccessor {
 		super.setProperty(context, target, key, value);
 	}
 
-	private Class getActualType(Type genericType) {
+	private static Class getActualType(Type genericType) {
 		Class type;
 		if (genericType instanceof ParameterizedType) {
-		    type = (Class) ((ParameterizedType) genericType).getActualTypeArguments()[0];
+			type = (Class) ((ParameterizedType) genericType).getActualTypeArguments()[0];
 		} else {
-		    type = (Class) genericType;
+			type = (Class) genericType;
 		}
 		return type;
 	}
@@ -115,7 +114,10 @@ public class ListAccessor extends ListPropertyAccessor {
 			Evaluation previous = eval.getPrevious();
 			String fieldName = previous.getNode().toString();
 			Object origin = previous.getSource();
-			Method getter = ReflectionBasedNullHandler.findGetter(origin, Info.capitalize(fieldName));
+			
+			Proxifier proxifier = (Proxifier) ctx.get("proxifier");
+			Method getter = new ReflectionBasedNullHandler(proxifier).findGetter(origin, StringUtils.capitalize(fieldName));
+			
 			genericType = getter.getGenericReturnType();
 		} else {
 			genericType = (Type) ctx.get("rootType");

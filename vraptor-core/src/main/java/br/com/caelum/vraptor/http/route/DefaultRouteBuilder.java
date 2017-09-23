@@ -98,14 +98,14 @@ public class DefaultRouteBuilder implements RouteBuilder {
 	private final Converters converters;
 
 	private final ParameterNameProvider nameProvider;
-    private final Evaluator evaluator;
+	private final Evaluator evaluator;
 
-    public DefaultRouteBuilder(Proxifier proxifier, TypeFinder finder, Converters converters, ParameterNameProvider nameProvider, Evaluator evaluator, String uri) {
+	public DefaultRouteBuilder(Proxifier proxifier, TypeFinder finder, Converters converters, ParameterNameProvider nameProvider, Evaluator evaluator, String uri) {
 		this.proxifier = proxifier;
 		this.finder = finder;
 		this.converters = converters;
 		this.nameProvider = nameProvider;
-        this.evaluator = evaluator;
+		this.evaluator = evaluator;
 		this.originalUri = uri;
 		builder = new DefaultParameterControlBuilder();
 	}
@@ -171,15 +171,6 @@ public class DefaultRouteBuilder implements RouteBuilder {
 		return proxifier.proxify(type, handler);
 	}
 
-	/**
-	 * @deprecated Use @Path or override RoutesConfiguration behavior
-	 */
-	@Deprecated
-	public void is(PatternBasedType type, PatternBasedType method) {
-		this.strategy = new PatternBasedStrategy(builder.build(), type, method, this.supportedMethods, priority);
-
-	}
-
 	public void is(Class<?> type, Method method) {
 		addParametersInfo(method);
 		ResourceMethod resourceMethod = DefaultResourceMethod.instanceFor(type, method);
@@ -207,7 +198,7 @@ public class DefaultRouteBuilder implements RouteBuilder {
 		}
 	}
 
-	private String[] sanitize(String[] parameters) {
+	private static String[] sanitize(String[] parameters) {
 		String[] sanitized = new String[parameters.length];
 		for (int i = 0; i < parameters.length; i++) {
 			sanitized[i] = parameters[i].replaceAll("(\\:.*|\\*)$", "");

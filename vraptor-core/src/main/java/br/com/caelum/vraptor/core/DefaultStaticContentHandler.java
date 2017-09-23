@@ -29,12 +29,17 @@ import javax.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import br.com.caelum.vraptor.ioc.ApplicationScoped;
+import br.com.caelum.vraptor.ioc.Component;
+
 /**
  * Handles default content if the request corresponds to static content.
  *
  * @author guilherme silveira
  * @author unknown - based on vraptor2
  */
+@Component
+@ApplicationScoped
 public class DefaultStaticContentHandler implements StaticContentHandler {
 
 	private static final Logger logger = LoggerFactory.getLogger(DefaultStaticContentHandler.class);
@@ -51,10 +56,15 @@ public class DefaultStaticContentHandler implements StaticContentHandler {
 	}
 
 	private String uriRelativeToContextRoot(HttpServletRequest request) {
-		return request.getRequestURI().substring(request.getContextPath().length());
+		String uri = request.getRequestURI().substring(request.getContextPath().length());
+		return removeQueryStringAndJSessionId(uri);
+	}
+	
+	private static String removeQueryStringAndJSessionId(String uri) {
+		return uri.replaceAll("[\\?;].+", "");
 	}
 
-	private boolean isAFile(URL resourceUrl) {
+	private static boolean isAFile(URL resourceUrl) {
 		return !resourceUrl.toString().endsWith("/");
 	}
 

@@ -33,7 +33,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import br.com.caelum.vraptor.config.BasicConfiguration;
-import br.com.caelum.vraptor.core.DefaultStaticContentHandler;
 import br.com.caelum.vraptor.core.Execution;
 import br.com.caelum.vraptor.core.RequestExecution;
 import br.com.caelum.vraptor.core.RequestInfo;
@@ -41,6 +40,7 @@ import br.com.caelum.vraptor.core.StaticContentHandler;
 import br.com.caelum.vraptor.http.EncodingHandler;
 import br.com.caelum.vraptor.http.VRaptorRequest;
 import br.com.caelum.vraptor.http.VRaptorResponse;
+import br.com.caelum.vraptor.interceptor.ApplicationLogicException;
 import br.com.caelum.vraptor.ioc.Container;
 import br.com.caelum.vraptor.ioc.ContainerProvider;
 
@@ -52,6 +52,8 @@ import br.com.caelum.vraptor.ioc.ContainerProvider;
  * @author Fabio Kung
  */
 public class VRaptor implements Filter {
+	private static final String VERSION = "3.5.6-SNAPSHOT";
+	
 	private ContainerProvider provider;
 	private ServletContext servletContext;
 
@@ -86,13 +88,23 @@ public class VRaptor implements Filter {
 			VRaptorResponse mutableResponse = new VRaptorResponse(baseResponse);
 
 			final RequestInfo request = new RequestInfo(servletContext, chain, mutableRequest, mutableResponse);
-			provider.provideForRequest(request, new Execution<Object>() {
+
+			Execution<Object> execution = new Execution<Object>() {
 				public Object insideRequest(Container container) {
 					container.instanceFor(EncodingHandler.class).setEncoding(baseRequest, baseResponse);
 					container.instanceFor(RequestExecution.class).execute();
 					return null;
 				}
-			});
+			};
+
+			try {
+				provider.provideForRequest(request, execution);
+			} catch (ApplicationLogicException e) {
+				// it is a business logic exception, we dont need to show
+				// all interceptors stack trace
+				throw new ServletException(e.getMessage(), e.getCause());
+			}
+
 			logger.debug("VRaptor ended the request");
 		}
 	}
@@ -100,14 +112,14 @@ public class VRaptor implements Filter {
 	public void init(FilterConfig cfg) throws ServletException {
 		servletContext = cfg.getServletContext();
 		BasicConfiguration config = new BasicConfiguration(servletContext);
-		init(config.getProvider(), new DefaultStaticContentHandler(servletContext));
-		logger.info("VRaptor 3.3.2-SNAPSHOT successfuly initialized");
+		init(config.getProvider());
+		logger.info("VRaptor {} successfuly initialized", VERSION);
 	}
 
-	void init(ContainerProvider provider, StaticContentHandler handler) {
+	void init(ContainerProvider provider) {
 		this.provider = provider;
-		this.staticHandler = handler;
 		this.provider.start(servletContext);
+		this.staticHandler = provider.getContainer().instanceFor(StaticContentHandler.class);
 	}
 
 }

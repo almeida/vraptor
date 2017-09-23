@@ -17,6 +17,7 @@
 
 package br.com.caelum.vraptor.view;
 
+import br.com.caelum.vraptor.serialization.I18nMessageSerialization;
 import br.com.caelum.vraptor.serialization.JSONPSerialization;
 import br.com.caelum.vraptor.serialization.JSONSerialization;
 import br.com.caelum.vraptor.serialization.RepresentationResult;
@@ -27,80 +28,91 @@ import br.com.caelum.vraptor.serialization.XMLSerialization;
  *
  * @author Guilherme Silveira
  */
-public class Results {
+public final class Results {
 
-    /**
-     * Offers server side forward and include for web pages.<br>
-     * Should be used only with end results (not logics), otherwise you might
-     * achieve the server-redirect-hell (f5 problem) issue.
-     */
-    public static Class<? extends PageResult> page() {
-        return PageResult.class;
-    }
+	private Results() {
+		throw new InstantiationError( "Must not instantiate this class" );
+	}
 
-    /**
-     * Server and client side forward to another logic.
-     */
-    public static Class<LogicResult> logic() {
-        return LogicResult.class;
-    }
+	/**
+	 * Offers server side forward and include for web pages.<br>
+	 * Should be used only with end results (not logics), otherwise you might
+	 * achieve the server-redirect-hell (f5 problem) issue.
+	 */
+	public static Class<? extends PageResult> page() {
+	return PageResult.class;
+	}
 
-    /**
-     * Uses an empty page.
-     */
-    public static Class<EmptyResult> nothing() {
-    	return EmptyResult.class;
-    }
+	/**
+	 * Server and client side forward to another logic.
+	 */
+	public static Class<LogicResult> logic() {
+	return LogicResult.class;
+	}
 
-    /**
-     * Sends information through the HTTP protocol, like
-     * status codes and header
-     */
-    public static Class<HttpResult> http() {
-    	return HttpResult.class;
-    }
+	/**
+	 * Uses an empty page.
+	 */
+	public static Class<EmptyResult> nothing() {
+		return EmptyResult.class;
+	}
 
-    /**
-     * Uses Referer header to redirect or forward
-     */
-    public static Class<RefererResult> referer() {
-    	return RefererResult.class;
-    }
+	/**
+	 * Sends information through the HTTP protocol, like
+	 * status codes and header
+	 */
+	public static Class<HttpResult> http() {
+		return HttpResult.class;
+	}
 
-    /**
-     * Uses pure header status.
-     */
-    public static Class<Status> status() {
-    	return Status.class;
-    }
+	/**
+	 * Uses Referer header to redirect or forward
+	 */
+	public static Class<RefererResult> referer() {
+		return RefererResult.class;
+	}
 
-    /**
-     * Uses xml serialization.
-     */
-    public static Class<XMLSerialization> xml() {
-    	return XMLSerialization.class;
-    }
+	/**
+	 * Uses pure header status.
+	 */
+	public static Class<Status> status() {
+		return Status.class;
+	}
 
-    /**
-     * Uses json serialization.
-     */
-    public static Class<JSONSerialization> json() {
-    	return JSONSerialization.class;
-    }
+	/**
+	 * Uses xml serialization.
+	 */
+	public static Class<XMLSerialization> xml() {
+		return XMLSerialization.class;
+	}
 
-    /**
-     * Uses jsonp serialization.
-     */
-    public static Class<JSONPSerialization> jsonp() {
-    	return JSONPSerialization.class;
-    }
+	/**
+	 * Uses json serialization.
+	 */
+	public static Class<JSONSerialization> json() {
+		return JSONSerialization.class;
+	}
+	
+	/**
+	 * Alias for json i18nMessage serialization
+	 */
+	public static Class<I18nMessageSerialization> message() {
+		return I18nMessageSerialization.class;
+	}
 
-    /**
-     * Uses a representation of an object based on request accept format.
-     */
-    public static Class<RepresentationResult> representation() {
-    	return RepresentationResult.class;
-    }
+	/**
+	 * Uses jsonp serialization.
+	 */
+	public static Class<JSONPSerialization> jsonp() {
+		return JSONPSerialization.class;
+	}
+
+	/**
+	 * Uses a representation of an object based on request accept format.
+	 */
+	public static Class<RepresentationResult> representation() {
+		return RepresentationResult.class;
+	}
 
 
 

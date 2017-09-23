@@ -31,17 +31,17 @@ public class DefaultParameterNameProvider implements ParameterNameProvider{
 		this.extractor = extractor;
 	}
 
-    public String[] parameterNamesFor(AccessibleObject method) {
-        Type[] parameterTypes = parameterTypes(method);
-        String[] names = new String[parameterTypes.length];
-        for (int i = 0; i < names.length; i++) {
-            names[i] = extractor.nameFor(parameterTypes[i]);
-        }
-        return names;
-    }
+	public String[] parameterNamesFor(AccessibleObject method) {
+		Type[] parameterTypes = parameterTypes(method);
+		String[] names = new String[parameterTypes.length];
+		for (int i = 0; i < names.length; i++) {
+			names[i] = extractor.nameFor(parameterTypes[i]);
+		}
+		return names;
+	}
 
 	@SuppressWarnings({ "rawtypes" })
-	private Type[] parameterTypes(AccessibleObject methodOrConstructor) {
+	private static Type[] parameterTypes(AccessibleObject methodOrConstructor) {
 		if (methodOrConstructor instanceof Method) {
 			return ((Method)methodOrConstructor).getGenericParameterTypes();
 		} else if (methodOrConstructor instanceof Constructor<?>) {

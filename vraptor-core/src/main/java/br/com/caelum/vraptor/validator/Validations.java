@@ -28,6 +28,9 @@ import org.hamcrest.ResourceBundleDescription;
 import br.com.caelum.vraptor.core.SafeResourceBundle;
 import br.com.caelum.vraptor.util.FallbackResourceBundle;
 
+import com.google.common.base.Supplier;
+import com.google.common.base.Suppliers;
+
 /**
  * Hamcrest based validation support.
  *
@@ -46,93 +49,131 @@ import br.com.caelum.vraptor.util.FallbackResourceBundle;
  */
 public class Validations {
 
-    private final List<Message> errors = new ArrayList<Message>();
-	private ResourceBundle bundle;
+	private final List<Message> errors = new ArrayList<Message>();
+	private Supplier<ResourceBundle> bundle;
 
-    public Validations(ResourceBundle bundle) {
-		this.bundle = bundle;
+	public Validations(ResourceBundle bundle) {
+		this.bundle = Suppliers.ofInstance(bundle);
 	}
 
-    public Validations() {
-    	this.bundle = new SafeResourceBundle(ResourceBundle.getBundle("messages"), true);
-    }
+	public Validations() {
+		this(new SafeResourceBundle(ResourceBundle.getBundle("messages"), true));
+	}
 
-    public <T> boolean that(T id, Matcher<? super T> matcher) {
-        return that(id, matcher, "", null);
-    }
+	public <T> boolean that(T id, Matcher<? super T> matcher) {
+	return that(id, matcher, "", null);
+	}
 
-    public <T> boolean that(T id, Matcher<? super T> matcher, String category) {
-        return that(id, matcher, category, null);
-    }
+	public <T> boolean that(T id, Matcher<? super T> matcher, String category) {
+	return that(id, matcher, category, null);
+	}
 
-    public <T> boolean that(T actual, Matcher<? super T> matcher, String category, String reason, Object... messageParameters) {
-        if (!matcher.matches(actual)) {
-        	if (reason != null) {
-        		errors.add(new I18nMessage(category, reason, messageParameters));
-            } else {
-                Description description = new ResourceBundleDescription();
-                description.appendDescriptionOf(matcher);
-                errors.add(new I18nMessage(description.toString(), category));
-            }
-            return false;
-        }
-        return true;
-    }
+	public <T> boolean that(T id, Matcher<? super T> matcher, I18nParam category) {
+		return that(id, matcher, category, null);
+	}
 
-    public boolean that(boolean assertion, String category, String reason, Object... messageParameters) {
-        if (!assertion) {
-        	errors.add(new I18nMessage(category, reason, messageParameters));
-        }
-        return assertion;
-    }
+	public <T> boolean that(T actual, Matcher<? super T> matcher, String category, String reason, Object... messageParameters) {
+	return genericThat(actual, matcher, category, reason, messageParameters);
+	}
 
-    protected String i18n(String key) {
-    	return bundle.getString(key);
-    }
+	public <T> boolean that(T actual, Matcher<? super T> matcher, I18nParam category, String reason, Object... messageParameters) {
+		return genericThat(actual, matcher, category, reason, messageParameters);
+	}
 
-    /**
-     * Returns the list of errors.
-     */
-    public List<Message> getErrors() {
-    	for (Message message : errors) {
+	public boolean that(boolean assertion, String category, String reason, Object... messageParameters) {
+	return genericThat(assertion, category, reason, messageParameters);
+	}
+
+	public boolean that(boolean assertion, I18nParam category, String reason, Object... messageParameters) {
+		return genericThat(assertion, category, reason, messageParameters);
+	}
+
+	protected I18nParam i18n(String key) {
+		return new I18nParam(key);
+	}
+
+	/**
+	 * Returns the list of errors.
+	 */
+	public List<Message> getErrors() {
+		for (Message message : errors) {
 			if (message instanceof I18nMessage) {
-				((I18nMessage) message).setBundle(bundle);
+				((I18nMessage) message).setLazyBundle(bundle);
 			}
 		}
-        return errors;
-    }
-
-    /**
-     * Returns the list of errors, using given resource bundle.
-     */
-    public List<Message> getErrors(ResourceBundle bundle) {
-    	if (isDefaultBundle(this.bundle)) {
-    		this.bundle = new SafeResourceBundle(bundle);
-    	} else {
-    		this.bundle = new FallbackResourceBundle(this.bundle, bundle);
-    	}
-    	return getErrors();
-    }
-
-	private boolean isDefaultBundle(ResourceBundle bundle) {
-		return bundle instanceof SafeResourceBundle && ((SafeResourceBundle) bundle).isDefault();
+	return errors;
 	}
 
-    /**
-     * Adds a list of errors to the error list.
-     * @return
-     */
-    public Validations and(List<Message> errors) {
-        this.errors.addAll(errors);
-        return this;
-    }
+	/**
+	 * Returns the list of errors, using given resource bundle.
+	 */
+	public List<Message> getErrors(ResourceBundle bundle) {
+		return getErrors(Suppliers.ofInstance(bundle));
+	}
+	/**
+	 * Returns the list of errors, using given resource bundle.
+	 */
+	public List<Message> getErrors(final Supplier<ResourceBundle> bundle) {
+		final Supplier<ResourceBundle> oldBundle = this.bundle;
+		this.bundle = new Supplier<ResourceBundle>() {
+			public ResourceBundle get() {
+				if (isDefaultBundle(oldBundle)) {
+					return new SafeResourceBundle(bundle.get());
+				} else {
+					return new FallbackResourceBundle(oldBundle.get(), bundle.get());
+				}
+			}
+		};
+		return getErrors();
+	}
 
-    /**
-     * Adds a single error message to the error list.
-     */
-    public Validations and(Message error) {
-        this.errors.add(error);
-        return this;
-    }
+	private boolean isDefaultBundle(Supplier<ResourceBundle> bundle) {
+		return bundle.get() instanceof SafeResourceBundle && ((SafeResourceBundle) bundle.get()).isDefault();
+	}
 
+	/**
+	 * Adds a list of errors to the error list.
+	 * @return
+	 */
+	public Validations and(List<Message> errors) {
+	this.errors.addAll(errors);
+	return this;
+	}
+
+	/**
+	 * Adds a single error message to the error list.
+	 */
+	public Validations and(Message error) {
+	this.errors.add(error);
+	return this;
+	}
+
+	private <T> boolean genericThat(T actual, Matcher<? super T> matcher, Object category, String reason, Object... messageParameters) {
+		if (!matcher.matches(actual)) {
+		if (reason != null) {
+			errors.add(i18nMessage(category, reason, messageParameters));
+		} else {
+		Description description = new ResourceBundleDescription();
+		description.appendDescriptionOf(matcher);
+		errors.add(i18nMessage(category, description.toString(), actual));
+		}
+		return false;
+	}
+	return true;
+	}
+
+	private I18nMessage i18nMessage(Object category, String reason, Object... messageParameters) {
+		if (category instanceof I18nParam) {
+			return new I18nMessage((I18nParam) category, reason, messageParameters);
+		}
+		return new I18nMessage(category.toString(), reason, messageParameters);
+	}
+
+	private boolean genericThat(boolean assertion, Object category, String reason, Object... messageParameters) {
+		if (!assertion) {
+		errors.add(i18nMessage(category, reason, messageParameters));
+	}
+	return assertion;
+	}
+	
 }

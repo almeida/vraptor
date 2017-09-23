@@ -27,8 +27,13 @@
  */
 package br.com.caelum.vraptor.http.iogi;
 
+import static java.util.Arrays.asList;
+import static java.util.Collections.enumeration;
+import static org.hamcrest.Matchers.allOf;
+import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.sameInstance;
@@ -40,7 +45,12 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.ResourceBundle;
+import java.util.Set;
 
 import org.junit.Test;
 import org.mockito.Mock;
@@ -48,6 +58,7 @@ import org.mockito.Mock;
 import br.com.caelum.iogi.parameters.Parameter;
 import br.com.caelum.iogi.parameters.Parameters;
 import br.com.caelum.iogi.reflection.Target;
+import br.com.caelum.vraptor.Result;
 import br.com.caelum.vraptor.core.Localization;
 import br.com.caelum.vraptor.core.SafeResourceBundle;
 import br.com.caelum.vraptor.http.ParametersProvider;
@@ -55,6 +66,7 @@ import br.com.caelum.vraptor.http.ParametersProviderTest;
 import br.com.caelum.vraptor.resource.DefaultResourceMethod;
 import br.com.caelum.vraptor.resource.ResourceMethod;
 import br.com.caelum.vraptor.util.EmptyBundle;
+import br.com.caelum.vraptor.validator.Message;
 
 public class IogiParametersProviderTest extends ParametersProviderTest {
 	private @Mock Localization mockLocalization;
@@ -65,30 +77,30 @@ public class IogiParametersProviderTest extends ParametersProviderTest {
 		return new IogiParametersProvider(nameProvider, request, new VRaptorInstantiator(converters, new VRaptorDependencyProvider(container), mockLocalization, new VRaptorParameterNamesProvider(nameProvider), request));
 	}
 
-    @Test
-    public void returnsNullWhenInstantiatingAStringForWhichThereAreNoParameters() throws Exception {
-    	thereAreNoParameters();
-    	final ResourceMethod method = string;
+	@Test
+	public void returnsNullWhenInstantiatingAStringForWhichThereAreNoParameters() throws Exception {
+		thereAreNoParameters();
+		final ResourceMethod method = string;
 
-    	Object[] params = provider.getParametersFor(method, errors, null);
+		Object[] params = provider.getParametersFor(method, errors, null);
 
-    	assertArrayEquals(new Object[] {null}, params);
-    }
+		assertArrayEquals(new Object[] {null}, params);
+	}
 
 	@Test
 	public void canInjectADependencyProvidedByVraptor() throws Exception {
 		thereAreNoParameters();
 
 		ResourceMethod resourceMethod = DefaultResourceMethod.instanceFor(OtherResource.class, OtherResource.class.getDeclaredMethod("logic", NeedsMyResource.class));
-    	final MyResource providedInstance = new MyResource();
+		final MyResource providedInstance = new MyResource();
 
-    	when(container.canProvide(MyResource.class)).thenReturn(true);
-    	when(container.instanceFor(MyResource.class)).thenReturn(providedInstance);
+		when(container.canProvide(MyResource.class)).thenReturn(true);
+		when(container.instanceFor(MyResource.class)).thenReturn(providedInstance);
 
-    	Object[] params = provider.getParametersFor(resourceMethod, errors, null);
+		Object[] params = provider.getParametersFor(resourceMethod, errors, null);
 		assertThat(((NeedsMyResource)params[0]).getMyResource(), is(sameInstance(providedInstance)));
 	}
-    //---------- The Following tests mock iogi to unit test the ParametersProvider impl.
+	//---------- The Following tests mock iogi to unit test the ParametersProvider impl.
 	@Test
 	public void willCreateAnIogiParameterForEachRequestParameterValue() throws Exception {
 		ResourceMethod anyMethod = buyA;
@@ -110,7 +122,6 @@ public class IogiParametersProviderTest extends ParametersProviderTest {
 		final ResourceMethod buyAHouse = buyA;
 		requestParameterIs(buyAHouse, "house", "");
 
-		@SuppressWarnings("unchecked")
 		final InstantiatorWithErrors mockInstantiator = mock(InstantiatorWithErrors.class);
 		IogiParametersProvider iogiProvider = new IogiParametersProvider(nameProvider, request, mockInstantiator);
 		final Target<House> expectedTarget = Target.create(House.class, "house");
@@ -127,7 +138,7 @@ public class IogiParametersProviderTest extends ParametersProviderTest {
 
 		getParameters(setId);
 
-		assertThat(errors, hasSize(1));
+		assertThat(errors.size(), is(1));
 	}
 
 	@Test
@@ -139,15 +150,65 @@ public class IogiParametersProviderTest extends ParametersProviderTest {
 		assertThat(cat, is(notNullValue()));
 		assertThat(cat.getLols(), is(nullValue()));
 	}
+	
+	@Test
+	public void isCapableOfDealingWithSets() throws Exception {
+		when(nameProvider.parameterNamesFor(any(Method.class))).thenReturn(new String[]{"abc"});
+		
+	ResourceMethod set = method("set", Set.class);
+
+		requestParameterIs(set, "abc", "1", "2");
+
+		Set<Long> abc = getParameters(set);
+
+		assertThat(abc, hasSize(2));
+		assertThat(abc, allOf(hasItem(1l), hasItem(2l)));
+	}
+	
+	@Test
+	public void isCapableOfDealingWithSetsOfObjects() throws Exception {
+		when(nameProvider.parameterNamesFor(any(Method.class))).thenReturn(new String[]{"abc"});
+		
+	ResourceMethod set = method("setOfObject", Set.class);
+
+		requestParameterIs(set, "abc.x", "1");
+
+		Set<ABC> abc = getParameters(set);
+
+		assertThat(abc, hasSize(1));
+		assertThat(abc.iterator().next().getX(), is(1l));
+	}
+
+	@Test
+	public void shouldInjectOnlyAttributesWithSameType() throws Exception {
+		Object result = mock(Result.class);
+		ResourceBundle emptyBundle = mock(ResourceBundle.class);
+
+		ResourceMethod method = DefaultResourceMethod.instanceFor(OtherResource.class, 
+				OtherResource.class.getDeclaredMethod("logic", String.class));
+
+		when(request.getAttribute("result")).thenReturn(result);
+		when(request.getParameterValues("result")).thenReturn(new String[] { "buggy" });
+		when(request.getParameterNames()).thenReturn(enumeration(asList("result")));
+		when(nameProvider.parameterNamesFor(method.getMethod())).thenReturn(new String[] { "result" });
+
+		List<Message> errors = new ArrayList<Message>();
+		Object[] out = provider.getParametersFor(method, errors, emptyBundle);
+
+		assertThat(out[0], is(not(result)));
+	}
+
 	//----------
 
 	class OtherResource {
-    	void logic(NeedsMyResource param) {
-    	}
-    }
+		void logic(NeedsMyResource param) {
+		}
+		void logic(String result) {
+		}
+	}
 
 	static class NeedsMyResource {
-    	private final MyResource myResource;
+		private final MyResource myResource;
 
 		public NeedsMyResource(MyResource myResource) {
 			this.myResource = myResource;
@@ -156,5 +217,5 @@ public class IogiParametersProviderTest extends ParametersProviderTest {
 		public MyResource getMyResource() {
 			return myResource;
 		}
-    }
+	}
 }

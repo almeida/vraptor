@@ -19,11 +19,9 @@ package br.com.caelum.vraptor.test;
 import java.util.HashMap;
 import java.util.Map;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletRequestWrapper;
 import javax.servlet.http.HttpSession;
-
-import org.jmock.Expectations;
-import org.jmock.Mockery;
 
 import br.com.caelum.vraptor.http.MutableRequest;
 
@@ -31,30 +29,37 @@ import br.com.caelum.vraptor.http.MutableRequest;
  * @author Fabio Kung
  */
 public class HttpServletRequestMock extends HttpServletRequestWrapper implements MutableRequest {
-    private final Map<String, Object> attributes = new HashMap<String, Object>();
-	private HttpSession session;
+	private final Map<String, Object> attributes = new HashMap<String, Object>();
+	private final HttpSession session;
 
-    public HttpServletRequestMock(HttpSession session, final MutableRequest mock, Mockery mockery) {
-    	super(mock);
-    	mockery.checking(new Expectations() {{ignoring(mock);}});
-        this.session = session;
-    }
+	public HttpServletRequestMock(HttpSession session, final MutableRequest mock) {
+		super(mock);
+	this.session = session;
+	}
 
-    @Override
-    public HttpSession getSession() {
-    	return session;
-    }
+	@Override
+	public HttpSession getSession() {
+		return session;
+	}
+	@Override
+	public HttpSession getSession(boolean allowCreate) {
+		return session;
+	}
 
-    @Override
-    public Object getAttribute(String name) {
-    	return attributes.get(name);
-    }
+	@Override
+	public Object getAttribute(String name) {
+		return attributes.get(name);
+	}
 
-    @Override
-    public void setAttribute(String name, Object o) {
-    	attributes.put(name, o);
-    }
+	@Override
+	public void setAttribute(String name, Object o) {
+		attributes.put(name, o);
+	}
 
 	public void setParameter(String key, String... value) {
+	}
+
+	public HttpServletRequest getOriginalRequest() {
+		return this;
 	}
 }

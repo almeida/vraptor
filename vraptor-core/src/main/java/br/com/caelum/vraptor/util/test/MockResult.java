@@ -25,8 +25,9 @@ import br.com.caelum.vraptor.Result;
 import br.com.caelum.vraptor.View;
 import br.com.caelum.vraptor.core.AbstractResult;
 import br.com.caelum.vraptor.ioc.Component;
+import br.com.caelum.vraptor.proxy.JavassistProxifier;
 import br.com.caelum.vraptor.proxy.MethodInvocation;
-import br.com.caelum.vraptor.proxy.ObjenesisProxifier;
+import br.com.caelum.vraptor.proxy.ObjenesisInstanceCreator;
 import br.com.caelum.vraptor.proxy.Proxifier;
 import br.com.caelum.vraptor.proxy.SuperMethod;
 import br.com.caelum.vraptor.serialization.NoRootSerialization;
@@ -57,7 +58,7 @@ public class MockResult extends AbstractResult {
 	}
 
 	public MockResult() {
-		this(new ObjenesisProxifier());
+		this(new JavassistProxifier(new ObjenesisInstanceCreator()));
 	}
 
 	public Result include(String key, Object value) {
@@ -66,7 +67,7 @@ public class MockResult extends AbstractResult {
 	}
 
 	public Result on(Class<? extends Exception> exception) {
-	    return this;
+		return this;
 	}
 
 	public <T extends View> T use(final Class<T> view) {

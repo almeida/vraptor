@@ -20,19 +20,35 @@ package br.com.caelum.vraptor.util;
 import java.util.ArrayList;
 import java.util.List;
 
-import br.com.caelum.vraptor.vraptor2.Info;
-
 /**
  * Utility methods to handle strings
 
  * @author Lucas Cavalcanti
  */
-public class StringUtils {
+public final class StringUtils {
 
+	private StringUtils() {
+		throw new InstantiationError( "Must not instantiate this class" );
+	}
+
+	public static String decapitalize(String name) {
+	if (name.length() == 1) {
+		return name.toLowerCase();
+	}
+	return Character.toLowerCase(name.charAt(0)) + name.substring(1);
+	}
+
+	public static String capitalize(String name) {
+	if (name.length() == 1) {
+		return name.toUpperCase();
+	}
+	return Character.toUpperCase(name.charAt(0)) + name.substring(1);
+	}
+	
 	public static String lowercaseFirst(String name) {
 		// common case: SomeClass -> someClass
 		if(name.length() > 1 && Character.isLowerCase(name.charAt(1))) {
-			return Info.decapitalize(name);
+			return decapitalize(name);
 		}
 
 		// different case: URLClassLoader -> urlClassLoader

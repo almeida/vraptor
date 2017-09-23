@@ -49,13 +49,13 @@ public class DefaultParametersControl implements ParametersControl {
 	private final Pattern pattern;
 	private final String originalPattern;
 	private final Converters converters;
-    private final Evaluator evaluator;
+	private final Evaluator evaluator;
 
-    public DefaultParametersControl(String originalPattern, Map<String, String> parameterPatterns, Converters converters, Evaluator evaluator) {
+	public DefaultParametersControl(String originalPattern, Map<String, String> parameterPatterns, Converters converters, Evaluator evaluator) {
 		this.originalPattern = originalPattern;
 		this.converters = converters;
 		this.pattern = compilePattern(originalPattern, parameterPatterns);
-        this.evaluator = evaluator;
+		this.evaluator = evaluator;
 	}
 
 	public DefaultParametersControl(String originalPattern, Converters converters, Evaluator evaluator) {
@@ -63,22 +63,25 @@ public class DefaultParametersControl implements ParametersControl {
 	}
 
 	private Pattern compilePattern(String originalPattern, Map<String, String> parameterPatterns) {
-		Map<String, String> parameters = new HashMap<String, String>(parameterPatterns);
+		Map<String, String> parametersLocal = new HashMap<String, String>(parameterPatterns);
 		Matcher matcher = Pattern.compile("\\{((?=[^\\{]+?[\\{])[^\\}]+?\\}|[^\\}]+?)\\}").matcher(originalPattern);
 		while (matcher.find()) {
 			String value = matcher.group(1);
-			String defaultPattern = value.matches("^[^:]+\\*$")? ".*" : value.indexOf(":") >= 0 ? value.replaceAll("^[^\\:]+?:", "") : "[^/]*";
-			if (!parameters.containsKey(value)) {
-				parameters.put(value, defaultPattern);
+			String defaultPattern = value.matches("^[^:]+\\*$")? ".*" : value.indexOf(':') >= 0 ? value.replaceAll("^[^\\:]+?:", "") : "[^/]*";
+			if (!parametersLocal.containsKey(value)) {
+				parametersLocal.put(value, defaultPattern);
 			}
 			this.parameters.add(value.replaceAll("(\\:.*|\\*)$", ""));
 		}
 		String patternUri = originalPattern;
 		patternUri = patternUri.replaceAll("/\\*", "/.*");
-		for (Entry<String, String> parameter : parameters.entrySet()) {
-			patternUri = patternUri.replace("{" + parameter.getKey() + "}", "(" + parameter.getValue() + ")");
+		for (Entry<String, String> parameter : parametersLocal.entrySet()) {
+			patternUri = patternUri.replace('{' + parameter.getKey() + '}', '(' + parameter.getValue() + ')');
 		}
-		logger.debug("For " + originalPattern + " retrieved " + patternUri + " with " + parameters);
+		
+		if (logger.isDebugEnabled()) {
+			logger.debug("For {} retrieved {} with {}", new Object[] { originalPattern, patternUri, parametersLocal });
+		}
 		return Pattern.compile(patternUri);
 	}
 
@@ -102,15 +105,15 @@ public class DefaultParametersControl implements ParametersControl {
 				}
 			}
 
-			base = base.replace("{" + splittedPatterns[i] + "}", result == null ? "" : result.toString());
+			base = base.replace('{' + splittedPatterns[i] + '}', result == null ? "" : result.toString());
 		}
 		
 		return base.replaceAll("\\.\\*", "");
 	}
 
-	private Object selectParam(String key, String[] paramNames, Object[] paramValues) {
+	private static Object selectParam(String key, String[] paramNames, Object[] paramValues) {
 		for (int i = 0; i < paramNames.length; i++) {
-			if (key.matches("^" + paramNames[i] + "(\\..*|$)")) {
+			if (key.matches('^' + paramNames[i] + "(\\..*|$)")) {
 				return paramValues[i];
 			}
 		}

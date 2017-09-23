@@ -18,11 +18,11 @@ package br.com.caelum.vraptor.serialization;
 import static br.com.caelum.vraptor.view.Results.status;
 
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 
 import br.com.caelum.vraptor.Result;
 import br.com.caelum.vraptor.http.FormatResolver;
+import br.com.caelum.vraptor.ioc.Component;
 import br.com.caelum.vraptor.restfulie.RestHeadersHandler;
 import br.com.caelum.vraptor.restfulie.hypermedia.HypermediaResource;
 
@@ -33,10 +33,11 @@ import br.com.caelum.vraptor.restfulie.hypermedia.HypermediaResource;
  * @author Jose Donizetti
  * @since 3.0.3
  */
+@Component
 public class DefaultRepresentationResult implements RepresentationResult {
 
 	private final FormatResolver formatResolver;
-	private List<Serialization> serializations;
+	private final List<Serialization> serializations;
 	private final Result result;
 	private final RestHeadersHandler headersHandler;
 
@@ -44,12 +45,20 @@ public class DefaultRepresentationResult implements RepresentationResult {
 		this.formatResolver = formatResolver;
 		this.result = result;
 		this.serializations = serializations;
-		Collections.sort(this.serializations, new PackageComparator());
 		this.headersHandler = headersHandler;
 	}
 
 	public <T> Serializer from(T object) {
 		return from(object, null);
+	}
+
+	/**
+	 * Override this method if you want another ordering strategy.
+	 *
+	 * @since 3.4.0
+	 */
+	protected void sortSerializations() {
+	Collections.sort(this.serializations, new PackageComparator());
 	}
 
 	public <T> Serializer from(T object, String alias) {
@@ -60,6 +69,7 @@ public class DefaultRepresentationResult implements RepresentationResult {
 		if(HypermediaResource.class.isAssignableFrom(object.getClass())) {
 			headersHandler.handle(HypermediaResource.class.cast(object));
 		}
+	sortSerializations();
 		String format = formatResolver.getAcceptFormat();
 		for (Serialization serialization : serializations) {
 			if (serialization.accepts(format)) {
@@ -73,18 +83,5 @@ public class DefaultRepresentationResult implements RepresentationResult {
 		result.use(status()).notAcceptable();
 
 		return new IgnoringSerializer();
-	}
-
-	private final class PackageComparator implements Comparator<Serialization> {
-		private int number(Serialization s) {
-			if (s.getClass().getPackage().getName().startsWith("br.com.caelum.vraptor.serialization")) {
-				return 1;
-			}
-			return 0;
-		}
-
-		public int compare(Serialization o1, Serialization o2) {
-			return number(o1) - number(o2);
-		}
 	}
 }

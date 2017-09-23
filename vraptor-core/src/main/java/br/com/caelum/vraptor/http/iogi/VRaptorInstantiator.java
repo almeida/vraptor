@@ -66,6 +66,7 @@ public class VRaptorInstantiator implements InstantiatorWithErrors, Instantiator
 			FallbackConverter.fallbackToNull(new StringConverter()),
 			new ArrayAdapter(new ArrayInstantiator(this)),
 			new NullDecorator(new ListInstantiator(this)), //NOTE: NullDecorator is here to preserve existing behaviour. Don't know if it is the ideal one, though.
+			new NullDecorator(new SetInstantiator(this)),
 			new DependencyInstantiator(objectInstantiator),
 			objectInstantiator);
 		multiInstantiator = new MultiInstantiator(instantiatorList);
@@ -105,14 +106,11 @@ public class VRaptorInstantiator implements InstantiatorWithErrors, Instantiator
 			this.delegate = delegate;
 		}
 		public Object instantiate(Target<?> target, Parameters params) {
-			if (params.hasRelatedTo(target)) {
-				return delegate.instantiate(target, params);
-			}
 			return provider.provide(target);
 		}
 
 		public boolean isAbleToInstantiate(Target<?> target) {
-			return provider.canProvide(target);
+			return target.getClassType().isInterface() && provider.canProvide(target);
 		}
 
 	}

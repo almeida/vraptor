@@ -18,15 +18,17 @@ package br.com.caelum.vraptor.validator;
 import br.com.caelum.vraptor.Result;
 import br.com.caelum.vraptor.core.MethodInfo;
 import br.com.caelum.vraptor.http.ParameterNameProvider;
+import br.com.caelum.vraptor.ioc.Component;
 
 /**
  * Outjector implementation that replicates logic parameters to next logic
  * @author Lucas Cavalcanti
  * @since 3.1.1
  */
+@Component
 public class ReplicatorOutjector implements Outjector {
 
-    private final Result result;
+	private final Result result;
 	private final MethodInfo method;
 	private final ParameterNameProvider provider;
 
@@ -34,13 +36,13 @@ public class ReplicatorOutjector implements Outjector {
 		this.result = result;
 		this.method = method;
 		this.provider = provider;
-    }
+	}
 
-    public void outjectRequestMap() {
-          String[] names = provider.parameterNamesFor(method.getResourceMethod().getMethod());
-          for (int i = 0; i < names.length; i++) {
-               result.include(names[i], method.getParameters()[i]);
-          }
-    }
+	public void outjectRequestMap() {
+	  String[] names = provider.parameterNamesFor(method.getResourceMethod().getMethod());
+	  for (int i = 0; i < names.length; i++) {
+		   result.include(names[i], method.getParameters()[i]);
+	  }
+	}
 
 }

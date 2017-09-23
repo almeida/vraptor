@@ -27,8 +27,9 @@ import java.lang.reflect.TypeVariable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.ResourceBundle;
 import java.util.Map.Entry;
+import java.util.ResourceBundle;
+import java.util.TreeMap;
 
 import javax.servlet.http.HttpServletRequest;
 
@@ -89,7 +90,7 @@ public class OgnlParametersProvider implements ParametersProvider {
 
 	}
 
-	private static class Parameter {
+	protected static class Parameter {
 		public Type type;
 		public Class clazz;
 		public String name;
@@ -110,14 +111,13 @@ public class OgnlParametersProvider implements ParametersProvider {
 		}
 	}
 
-	private Object createParameter(Parameter param, Map<String, String[]> requestNames, ResourceBundle bundle, List<Message> errors) {
+	protected Object createParameter(Parameter param, Map<String, String[]> requestNames, ResourceBundle bundle, List<Message> errors) {
 		Object root;
 		if (request.getAttribute(param.name) != null) {
-			root = request.getAttribute(param.name);
-		} else if (requestNames.isEmpty()) {
-			if (container.canProvide(param.clazz)) {
-				return container.instanceFor(param.clazz);
-			}
+			return request.getAttribute(param.name);
+		} else if (param.clazz.isInterface() && container.canProvide(param.clazz)) {
+		return container.instanceFor(param.clazz);
+	} else if (requestNames.isEmpty()) {
 			return Defaults.defaultValue(param.actualType());
 		} else {
 			root = createRoot(param, requestNames, bundle, errors);
@@ -129,7 +129,7 @@ public class OgnlParametersProvider implements ParametersProvider {
 		ognl.startContext(param.name, param.type, root, bundle);
 
 		for (Entry<String, String[]> parameter : requestNames.entrySet()) {
-			String key = parameter.getKey().replaceFirst("^" + param.name + "\\.?", "");
+			String key = parameter.getKey().replaceFirst('^' + param.name + "\\.?", "");
 			String[] values = parameter.getValue();
 			setProperty(param.name, key, values, errors);
 		}
@@ -137,7 +137,7 @@ public class OgnlParametersProvider implements ParametersProvider {
 		return ognl.get(param.name);
 	}
 
-	private Object createRoot(Parameter param, Map<String, String[]> requestNames, ResourceBundle bundle,
+	protected Object createRoot(Parameter param, Map<String, String[]> requestNames, ResourceBundle bundle,
 			List<Message> errors) {
 		if (requestNames.containsKey(param.name)) {
 			String[] values = requestNames.get(param.name);
@@ -156,7 +156,7 @@ public class OgnlParametersProvider implements ParametersProvider {
 		}
 	}
 
-	private void setProperty(String name, String key, String[] values, List<Message> errors) {
+	protected void setProperty(String name, String key, String[] values, List<Message> errors) {
 		try {
 			logger.debug("Applying {} with {}",key, values);
 			ognl.setValue(name, key, values);
@@ -165,7 +165,7 @@ public class OgnlParametersProvider implements ParametersProvider {
 		}
 	}
 
-	private Object createSimpleParameter(Parameter param, String[] values, ResourceBundle bundle) {
+	protected Object createSimpleParameter(Parameter param, String[] values, ResourceBundle bundle) {
 		if (param.actualType().isArray()) {
 			return createArray(param.actualType(), values, bundle);
 		}
@@ -175,11 +175,11 @@ public class OgnlParametersProvider implements ParametersProvider {
 		return convert(param.actualType(), values[0], bundle);
 	}
 
-	private Object convert(Class clazz, String value, ResourceBundle bundle) {
+	protected Object convert(Class clazz, String value, ResourceBundle bundle) {
 		return ognl.createAdapter(bundle).convert(value, clazz);
 	}
 
-	private List createList(Type type, ResourceBundle bundle, String[] values) {
+	protected List createList(Type type, ResourceBundle bundle, String[] values) {
 		List list = new ArrayList();
 		Class actual = getActualType(type);
 		for (String value : values) {
@@ -188,7 +188,7 @@ public class OgnlParametersProvider implements ParametersProvider {
 		return list;
 	}
 
-	private Object createArray(Class clazz, String[] values, ResourceBundle bundle) {
+	protected Object createArray(Class clazz, String[] values, ResourceBundle bundle) {
 		Class arrayType = clazz.getComponentType();
 		Object array = Array.newInstance(arrayType, values.length);
 		for (int i = 0; i < values.length; i++) {
@@ -197,12 +197,12 @@ public class OgnlParametersProvider implements ParametersProvider {
 		return array;
 	}
 
-	private Class getActualType(Type type) {
+	protected Class getActualType(Type type) {
 		return (Class) ((ParameterizedType) type).getActualTypeArguments()[0];
 	}
 
-	private Map<String, String[]> parametersThatStartWith(String name) {
-		Map<String, String[]> requestNames = filterKeys(request.getParameterMap(), containsPattern("^" + name));
-		return requestNames;
+	protected Map<String, String[]> parametersThatStartWith(String name) {
+		Map<String, String[]> requestNames = filterKeys(request.getParameterMap(), containsPattern('^' + name));
+		return new TreeMap<String, String[]>(requestNames);
 	}
 }

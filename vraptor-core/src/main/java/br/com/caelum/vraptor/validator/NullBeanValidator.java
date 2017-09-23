@@ -15,7 +15,8 @@
  */
 package br.com.caelum.vraptor.validator;
 
-import java.util.Collections;
+import static java.util.Collections.emptyList;
+
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -30,10 +31,20 @@ public class NullBeanValidator implements BeanValidator {
 
 	private static final Logger logger = LoggerFactory.getLogger(NullBeanValidator.class);
 
-	public List<Message> validate(Object object) {
+	public List<Message> validate(Object object, Class<?>... groups) {
 		logger.warn("You are willing to validate an object, but there is no bean validation engine " +
-				"registered. Please add the jars of some implementation of JSR 303 or Hibernate Validator.");
-		return Collections.emptyList();
+				"registered. Please add the jars of some implementation of Bean Validator.");
+		return emptyList();
+	}
+
+	public List<Message> validateProperties(Object object, String... properties) {
+		return validate(object);
+	}
+
+	public List<Message> validateProperty(Object object, String property, Class<?>... groups) {
+		logger.warn("You are willing to validate an object, but there is no bean validation engine " +
+				"registered. Please add the jars of some implementation of Bean Validator.");
+		return emptyList();
 	}
 
 }

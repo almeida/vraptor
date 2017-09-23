@@ -22,8 +22,10 @@ import java.lang.reflect.Type;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.Map.Entry;
+import java.util.Set;
+
+import javax.inject.Named;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,14 +34,20 @@ import br.com.caelum.vraptor.ComponentRegistry;
 import br.com.caelum.vraptor.ioc.Cacheable;
 import br.com.caelum.vraptor.ioc.ComponentFactory;
 import br.com.caelum.vraptor.ioc.ComponentFactoryIntrospector;
+import br.com.caelum.vraptor.ioc.StereotypeHandler;
 
+import com.google.common.base.Predicate;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 import com.google.inject.Binder;
+import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Scope;
 import com.google.inject.ScopeAnnotation;
 import com.google.inject.TypeLiteral;
 import com.google.inject.binder.ScopedBindingBuilder;
 import com.google.inject.matcher.Matchers;
+import com.google.inject.multibindings.Multibinder;
 import com.google.inject.spi.TypeEncounter;
 import com.google.inject.spi.TypeListener;
 import com.google.inject.util.Types;
@@ -61,12 +69,18 @@ public class GuiceComponentRegistry implements ComponentRegistry {
 	private final Set<Class<?>> boundClasses = new HashSet<Class<?>>();
 	private final Set<Class<?>> listTypes = new HashSet<Class<?>>();
 
-	public GuiceComponentRegistry(Binder binder) {
+	private final Multibinder<StereotypeHandler> stereotypeHandlers;
+
+	public GuiceComponentRegistry(Binder binder, Multibinder<StereotypeHandler> stereotypeHandlers) {
 		this.binder = binder;
+		this.stereotypeHandlers = stereotypeHandlers;
 	}
 	public void register(Class requiredType, Class componentType) {
 		boundClasses.add(requiredType);
 		logger.debug("Binding {} to {}", requiredType, componentType);
+		if (StereotypeHandler.class.isAssignableFrom(requiredType)) {
+			stereotypeHandlers.addBinding().to(requiredType);
+		}
 		ScopedBindingBuilder binding = bindToConstructor(requiredType, componentType);
 		if (defaultScope(componentType)) {
 			binding.in(GuiceProvider.REQUEST);
@@ -82,27 +96,35 @@ public class GuiceComponentRegistry implements ComponentRegistry {
 		}
 		return true;
 	}
+	
 	public void deepRegister(Class componentType) {
 		register(componentType, componentType);
 		deepRegister(componentType, componentType);
 	}
 
 	private void deepRegister(Class required, Class component) {
-	    if (required == null || required.equals(Object.class)) {
+		if (required == null || required.equals(Object.class)) {
 			return;
 		}
-	    if (boundClasses.add(required)) {
-	    	logger.debug("Binding {} to {}", required, component);
-	        binder.bind(required).to(component);
-	    } else {
-	    	logger.debug("Ignoring binding of {} to {}", required, component);
-	    }
+		
+	// try register named component
+	if (component.isAnnotationPresent(Named.class)) {
+		Named named = ((Class<?>) component).getAnnotation(Named.class);
+		logger.debug("Binding {} to {} with @Named({})", new Object[] { required, component, named.value() });
+		binder.bind(required).annotatedWith(named).to(component);
+	} else if (!boundClasses.contains(required)) {
+		logger.debug("Binding {} to {}", required, component);
+		binder.bind(required).to(component);
+		boundClasses.add(required);
+	} else {
+		logger.debug("Ignoring binding of {} to {}", required, component);
+	}
+		
+		for (Class<?> c : required.getInterfaces()) {
+		deepRegister(c, component);
+		}
 
-	    for (Class<?> c : required.getInterfaces()) {
-	        deepRegister(c, component);
-	    }
-
-	    deepRegister(required.getSuperclass(), component);
+		deepRegister(required.getSuperclass(), component);
 	}
 
 	public void registerInScope(Map<Class, Class> classes, Scope scope) {
@@ -115,10 +137,10 @@ public class GuiceComponentRegistry implements ComponentRegistry {
 		if (componentType.isAnnotationPresent(Cacheable.class)) {
 			return binder.bind(requiredType).annotatedWith(Cacheable.class).toConstructor(componentType.getDeclaredConstructors()[0]);
 		}
-		Constructor constructor = componentType.getDeclaredConstructors()[0];
+		Constructor constructor = getConstructor(componentType);
 		for (Type type : constructor.getGenericParameterTypes()) {
 			if (type instanceof ParameterizedType) {
-				ParameterizedType ptype =((ParameterizedType) type);
+				ParameterizedType ptype =(ParameterizedType) type;
 				if (ptype.getRawType() instanceof Class<?> && List.class.isAssignableFrom((Class<?>) ptype.getRawType())
 						&& ptype.getRawType() instanceof Class<?> && !listTypes.contains(ptype.getActualTypeArguments()[0])) {
 					listTypes.add((Class<?>) ptype.getActualTypeArguments()[0]);
@@ -128,13 +150,23 @@ public class GuiceComponentRegistry implements ComponentRegistry {
 		}
 		return binder.bind(requiredType).toConstructor(constructor);
 	}
+	private Constructor getConstructor(Class componentType) {
+		Constructor[] constructors = componentType.getDeclaredConstructors();
+		Iterable<Constructor> filteredConstructor = Iterables.filter(Lists.newArrayList(constructors), new Predicate<Constructor>() {
+
+			public boolean apply(Constructor constructor) {
+				return constructor.isAnnotationPresent(Inject.class) || constructor.isAnnotationPresent(javax.inject.Inject.class);
+			}
+			
+		});
+		return Iterables.getFirst(filteredConstructor, constructors[0]); 
+	}
 
 	private void registerFactory(Class componentType) {
 		if (ComponentFactory.class.isAssignableFrom(componentType)) {
 			final Class<?> target = new ComponentFactoryIntrospector().targetTypeForComponentFactory(componentType);
 			Type adapterType = Types.newParameterizedType(ComponentFactoryProviderAdapter.class, target);
 			Type factoryType = Types.newParameterizedType(ComponentFactory.class, target);
-//			binder.bind(TypeLiteral.get(adapterType));
 			binder.bind(TypeLiteral.get(factoryType)).to(componentType);
 			binder.bind(target).toProvider((TypeLiteral) TypeLiteral.get(adapterType));
 		}

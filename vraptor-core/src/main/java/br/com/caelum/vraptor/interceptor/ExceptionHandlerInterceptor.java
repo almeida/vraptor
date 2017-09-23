@@ -16,8 +16,6 @@
  */
 package br.com.caelum.vraptor.interceptor;
 
-import javax.servlet.http.HttpServletRequest;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,59 +45,50 @@ import com.google.common.base.Throwables;
  */
 @Intercepts
 public class ExceptionHandlerInterceptor
-    implements Interceptor {
+	implements Interceptor {
 
-    private static final Logger logger = LoggerFactory.getLogger(ExceptionHandlerInterceptor.class);
+	private static final Logger logger = LoggerFactory.getLogger(ExceptionHandlerInterceptor.class);
 
-    private final ExceptionMapper exceptions;
-    private final Result result;
-    private final HttpServletRequest request;
+	private final ExceptionMapper exceptions;
+	private final Result result;
 
-    public ExceptionHandlerInterceptor(ExceptionMapper exceptions, Result result, HttpServletRequest request) {
-        this.exceptions = exceptions;
-        this.result = result;
-        this.request = request;
-    }
+	public ExceptionHandlerInterceptor(ExceptionMapper exceptions, Result result) {
+		this.exceptions = exceptions;
+		this.result = result;
+	}
 
-    public boolean accepts(ResourceMethod method) {
-        return true;
-    }
+	public boolean accepts(ResourceMethod method) {
+		return true;
+	}
 
-    public void intercept(InterceptorStack stack, ResourceMethod method, Object resourceInstance)
-        throws InterceptionException {
-        try {
-            stack.next(method, resourceInstance);
-        } catch (InterceptionException e) {
-            if (!(e.getCause() instanceof Exception) || !replay((Exception) e.getCause())) {
-                throw e;
-            }
-        }
-    }
+	public void intercept(InterceptorStack stack, ResourceMethod method, Object resourceInstance)
+			throws InterceptionException {
+		try {
+			stack.next(method, resourceInstance);
+		} catch (InterceptionException e) {
+			if (!(e.getCause() instanceof Exception) || !replay((Exception) e.getCause())) {
+				throw e;
+			}
+		}
+	}
 
-    protected void reportException(Exception e) {
-    	Throwable rootCause = Throwables.getRootCause(e);
+	protected void reportException(Exception e) {
+		result.include("exception", Throwables.getRootCause(e));
+	}
 
-        // add error attributes compliance with servlet spec
-        result.include("javax.servlet.error.status_code", 500);
-        result.include("javax.servlet.error.exception", rootCause);
-        result.include("javax.servlet.error.exception_type", rootCause.getClass());
-        result.include("javax.servlet.error.message", rootCause.getMessage());
-        result.include("javax.servlet.error.request_uri", request.getRequestURI());
-    }
+	protected boolean replay(Exception e) {
+		ExceptionRecorder<Result> exresult = exceptions.findByException(e);
 
-    protected boolean replay(Exception e) {
-        ExceptionRecorder<Result> exresult = exceptions.findByException(e);
-
-        if (exresult == null) {
+		if (exresult == null) {
 			return false;
 		}
 
-        reportException(e);
+		reportException(e);
 
-        logger.debug("handling exception {}", e.getClass());
-        exresult.replay(result);
+		logger.debug("handling exception {}", e.getClass());
+		exresult.replay(result);
 
-        return true;
-    }
+		return true;
+	}
 
 }

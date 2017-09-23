@@ -43,12 +43,12 @@ public class DefaultPathResolver implements PathResolver {
 
 		String suffix = "";
 		if (format != null && !format.equals("html")) {
-			suffix = "." + format;
+			suffix = '.' + format;
 		}
-        String name = method.getResource().getType().getSimpleName();
-        String folderName = extractControllerFromName(name);
-		return getPrefix() + folderName + "/" + method.getMethod().getName() + suffix
-				+ "."+getExtension();
+	String name = method.getResource().getType().getSimpleName();
+	String folderName = extractControllerFromName(name);
+		return getPrefix() + folderName + '/' + method.getMethod().getName() + suffix
+				+ '.' +getExtension();
 	}
 
 	protected String getPrefix() {
@@ -59,15 +59,15 @@ public class DefaultPathResolver implements PathResolver {
 		return "jsp";
 	}
 
-    protected String extractControllerFromName(String baseName) {
-        baseName = lowerFirstCharacter(baseName);
-        if (baseName.endsWith("Controller")) {
-            return baseName.substring(0, baseName.lastIndexOf("Controller"));
-        }
-        return baseName;
-    }
+	protected String extractControllerFromName(String baseName) {
+	baseName = lowerFirstCharacter(baseName);
+	if (baseName.endsWith("Controller")) {
+		return baseName.substring(0, baseName.lastIndexOf("Controller"));
+	}
+	return baseName;
+	}
 
-    private String lowerFirstCharacter(String baseName) {
-        return baseName.toLowerCase().substring(0, 1) + baseName.substring(1, baseName.length());
-    }
+	private static String lowerFirstCharacter(String baseName) {
+	return baseName.toLowerCase().substring(0, 1) + baseName.substring(1, baseName.length());
+	}
 }

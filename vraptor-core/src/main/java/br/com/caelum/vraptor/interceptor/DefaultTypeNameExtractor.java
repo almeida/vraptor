@@ -45,13 +45,13 @@ public class DefaultTypeNameExtractor implements TypeNameExtractor {
 		}
 
 		if (generic instanceof TypeVariable<?>) {
-			return nameFor(((TypeVariable<?>) generic));
+			return nameFor((TypeVariable<?>) generic);
 		}
 
 		return nameFor((Class<?>) generic);
 	}
 
-	private String nameFor(Class<?> raw) {
+	private static String nameFor(Class<?> raw) {
 		if (raw.isArray()) {
 			return nameFor(raw.getComponentType()) + "List";
 		}
@@ -61,12 +61,12 @@ public class DefaultTypeNameExtractor implements TypeNameExtractor {
 		return StringUtils.lowercaseFirst(name);
 	}
 
-	private String nameFor(TypeVariable<?> variable) {
+	private static String nameFor(TypeVariable<?> variable) {
 		return StringUtils.lowercaseFirst(variable.getName());
 	}
 
 	private String nameFor(WildcardType wild) {
-		if ((wild.getLowerBounds().length != 0)) {
+		if (wild.getLowerBounds().length != 0) {
 			return nameFor(wild.getLowerBounds()[0]);
 		} else {
 			return nameFor(wild.getUpperBounds()[0]);

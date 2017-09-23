@@ -25,6 +25,7 @@ import java.util.ResourceBundle;
 import br.com.caelum.vraptor.Convert;
 import br.com.caelum.vraptor.Converter;
 import br.com.caelum.vraptor.ioc.ApplicationScoped;
+import br.com.caelum.vraptor.ioc.PrototypeScoped;
 
 /**
  * Accepts either the ordinal value or name. Null and empty strings are treated
@@ -33,43 +34,44 @@ import br.com.caelum.vraptor.ioc.ApplicationScoped;
  * @author Guilherme Silveira
  */
 @Convert(Enum.class)
-@ApplicationScoped
+@PrototypeScoped
 public class EnumConverter<T extends Enum<T>> implements Converter<T> {
+	private static final String IS_NOT_A_VALID_ENUM_VALUE = "is_not_a_valid_enum_value";
 
 	/**
 	 * Enums are always final, so I can suppress this warning safely
 	 */
 	@SuppressWarnings("unchecked")
-    public T convert(String value, Class<? extends T> type, ResourceBundle bundle) {
-	    if (isNullOrEmpty(value)) {
-            return null;
-        }
-	    
-        if (Character.isDigit(value.charAt(0))) {
-            return resolveByOrdinal(value, (Class<T>) type, bundle);
-        } else {
-            return resolveByName(value, (Class<T>) type, bundle);
-        }
-    }
+	public T convert(String value, Class<? extends T> type, ResourceBundle bundle) {
+		if (isNullOrEmpty(value)) {
+			return null;
+		}
+			
+		if (Character.isDigit(value.charAt(0))) {
+			return resolveByOrdinal(value, (Class<T>) type, bundle);
+		} else {
+			return resolveByName(value, (Class<T>) type, bundle);
+		}
+	}
 
-    private T resolveByName(String value, Class<T> enumType, ResourceBundle bundle) {
-        try {
-            return Enum.valueOf(enumType, value);
-        } catch (IllegalArgumentException e) {
-			throw new ConversionError(MessageFormat.format(bundle.getString("is_not_a_valid_enum_value"), value));
-        }
-    }
+	private T resolveByName(String value, Class<T> enumType, ResourceBundle bundle) {
+		try {
+			return Enum.valueOf(enumType, value);
+		} catch (IllegalArgumentException e) {
+				throw new ConversionError(MessageFormat.format(bundle.getString(IS_NOT_A_VALID_ENUM_VALUE), value));
+		}
+	}
 
-    private T resolveByOrdinal(String value, Class<T> enumType, ResourceBundle bundle) {
-        try {
-            int ordinal = Integer.parseInt(value);
-            if (ordinal >= enumType.getEnumConstants().length) {
-    			throw new ConversionError(MessageFormat.format(bundle.getString("is_not_a_valid_enum_value"), value));
-            }
-            return enumType.getEnumConstants()[ordinal];
-        } catch (NumberFormatException e) {
-			throw new ConversionError(MessageFormat.format(bundle.getString("is_not_a_valid_enum_value"), value));
-        }
-    }
+	private T resolveByOrdinal(String value, Class<T> enumType, ResourceBundle bundle) {
+		try {
+			int ordinal = Integer.parseInt(value);
+			if (ordinal >= enumType.getEnumConstants().length) {
+					throw new ConversionError(MessageFormat.format(bundle.getString(IS_NOT_A_VALID_ENUM_VALUE), value));
+			}
+			return enumType.getEnumConstants()[ordinal];
+		} catch (NumberFormatException e) {
+				throw new ConversionError(MessageFormat.format(bundle.getString(IS_NOT_A_VALID_ENUM_VALUE), value));
+		}
+	}
 
 }

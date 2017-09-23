@@ -24,13 +24,14 @@ import javax.servlet.http.HttpServletRequest;
 import br.com.caelum.vraptor.Delete;
 import br.com.caelum.vraptor.Get;
 import br.com.caelum.vraptor.Head;
+import br.com.caelum.vraptor.Options;
+import br.com.caelum.vraptor.Patch;
 import br.com.caelum.vraptor.Post;
 import br.com.caelum.vraptor.Put;
 import br.com.caelum.vraptor.Trace;
 
 public enum HttpMethod {
-	// TODO: options?
-	GET(Get.class), POST(Post.class), PUT(Put.class), DELETE(Delete.class), TRACE(Trace.class), HEAD(Head.class);
+	GET(Get.class), POST(Post.class), PUT(Put.class), DELETE(Delete.class), TRACE(Trace.class), HEAD(Head.class), OPTIONS(Options.class), PATCH(Patch.class);
 
 	private static final String METHOD_PARAMETER = "_method";
 	private final Class<? extends Annotation> type;
@@ -48,7 +49,7 @@ public enum HttpMethod {
 		if (methodName == null) {
 			methodName = request.getMethod();
 		} else if ("GET".equalsIgnoreCase(request.getMethod())) {
-			throw new IllegalArgumentException("You can't use " + METHOD_PARAMETER + " " +
+			throw new IllegalArgumentException("You can't use " + METHOD_PARAMETER + ' ' +
 					"parameter on a GET request. Use POST instead.");
 		}
 		try {

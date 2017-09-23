@@ -16,88 +16,82 @@
  */
 package br.com.caelum.vraptor.core;
 
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import java.io.IOException;
 
-import org.jmock.Expectations;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import br.com.caelum.vraptor.InterceptionException;
 import br.com.caelum.vraptor.interceptor.Interceptor;
 import br.com.caelum.vraptor.ioc.Container;
 import br.com.caelum.vraptor.resource.ResourceMethod;
-import br.com.caelum.vraptor.test.VRaptorMockery;
 
 public class ToInstantiateInterceptorHandlerTest {
 
-    private VRaptorMockery mockery;
+	private @Mock Container container;
+	private @Mock Interceptor interceptor;
+	private @Mock InterceptorStack stack;
+	private @Mock ResourceMethod method;
 
-    @Before
-    public void setup() {
-        this.mockery = new VRaptorMockery();
-    }
+	@Before
+	public void setup() {
+	MockitoAnnotations.initMocks(this);
+	}
 
-    public static class MyWeirdInterceptor implements Interceptor {
-        public MyWeirdInterceptor(Dependency d) {
-        }
+	public static class MyWeirdInterceptor implements Interceptor {
+	public MyWeirdInterceptor(Dependency d) {
+	}
 
-        public void intercept(InterceptorStack stack, ResourceMethod method, Object resourceInstance)
-                throws InterceptionException {
-        }
+	public void intercept(InterceptorStack stack, ResourceMethod method, Object resourceInstance)
+		throws InterceptionException {
+	}
 
-        public boolean accepts(ResourceMethod method) {
-            return true;
-        }
-    }
+	public boolean accepts(ResourceMethod method) {
+		return true;
+	}
+	}
 
-    public static class Dependency {
+	public static class Dependency {
 
-    }
+	}
 
-    @Test(expected = InterceptionException.class)
-    public void shouldComplainWhenUnableToInstantiateAnInterceptor() throws InterceptionException, IOException {
-        Container container = mockery.container(MyWeirdInterceptor.class, null);
-        ToInstantiateInterceptorHandler handler = new ToInstantiateInterceptorHandler(container,
-                MyWeirdInterceptor.class);
-        handler.execute(null, null, null);
-    }
+	@Test(expected = InterceptionException.class)
+	public void shouldComplainWhenUnableToInstantiateAnInterceptor() throws InterceptionException, IOException {
+	when(container.instanceFor(MyWeirdInterceptor.class)).thenReturn(null);
+	
+	ToInstantiateInterceptorHandler handler = new ToInstantiateInterceptorHandler(container,
+		MyWeirdInterceptor.class);
+	handler.execute(null, null, null);
+	}
 
-    @Test
-    public void shouldInvokeInterceptorsMethodIfAbleToInstantiateIt() throws InterceptionException, IOException {
-        final Interceptor interceptor = mockery.mock(Interceptor.class);
-        final InterceptorStack stack = mockery.mock(InterceptorStack.class);
-        final ResourceMethod method = mockery.mock(ResourceMethod.class);
-        final Object instance = new Object();
-        Container container = mockery.container(Interceptor.class, interceptor);
-        mockery.checking(new Expectations() {
-            {
-            	one(interceptor).accepts(method); will(returnValue(true));
-                one(interceptor).intercept(stack, method, instance);
-            }
-        });
-        ToInstantiateInterceptorHandler handler = new ToInstantiateInterceptorHandler(container, Interceptor.class);
-        handler.execute(stack, method, instance);
-        mockery.assertIsSatisfied();
-    }
-    @Test
-    public void shouldNotInvokeInterceptorsMethodIfInterceptorDoesntAcceptsResource() throws InterceptionException, IOException {
-    	final Interceptor interceptor = mockery.mock(Interceptor.class);
-    	final InterceptorStack stack = mockery.mock(InterceptorStack.class);
-    	final ResourceMethod method = mockery.mock(ResourceMethod.class);
-    	final Object instance = new Object();
-    	Container container = mockery.container(Interceptor.class, interceptor);
-    	mockery.checking(new Expectations() {
-    		{
-    			one(interceptor).accepts(method); will(returnValue(false));
+	@Test
+	public void shouldInvokeInterceptorsMethodIfAbleToInstantiateIt() throws InterceptionException, IOException {
+	final Object instance = new Object();
+	
+	when(container.instanceFor(Interceptor.class)).thenReturn(interceptor);
+	when(interceptor.accepts(method)).thenReturn(true);
 
-    			never(interceptor).intercept(stack, method, instance);
+	ToInstantiateInterceptorHandler handler = new ToInstantiateInterceptorHandler(container, Interceptor.class);
+	handler.execute(stack, method, instance);
 
-    			one(stack).next(method, instance);
-    		}
-    	});
-    	ToInstantiateInterceptorHandler handler = new ToInstantiateInterceptorHandler(container, Interceptor.class);
-    	handler.execute(stack, method, instance);
-    	mockery.assertIsSatisfied();
-    }
+	verify(interceptor).intercept(stack, method, instance);
+	}
+	@Test
+	public void shouldNotInvokeInterceptorsMethodIfInterceptorDoesntAcceptsResource() throws InterceptionException, IOException {
+		final Object instance = new Object();
+	when(container.instanceFor(Interceptor.class)).thenReturn(interceptor);
+	when(interceptor.accepts(method)).thenReturn(false);
 
+		ToInstantiateInterceptorHandler handler = new ToInstantiateInterceptorHandler(container, Interceptor.class);
+		handler.execute(stack, method, instance);
+		
+	verify(interceptor, never()).intercept(stack, method, instance);
+	verify(stack).next(method, instance);
+	}
 }

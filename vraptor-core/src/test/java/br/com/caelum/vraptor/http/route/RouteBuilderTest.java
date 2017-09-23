@@ -21,7 +21,6 @@ import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Method;
@@ -30,10 +29,13 @@ import java.math.BigDecimal;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import br.com.caelum.vraptor.core.Converters;
 import br.com.caelum.vraptor.http.ParameterNameProvider;
-import br.com.caelum.vraptor.proxy.DefaultProxifier;
+import br.com.caelum.vraptor.proxy.JavassistProxifier;
+import br.com.caelum.vraptor.proxy.ObjenesisInstanceCreator;
 import br.com.caelum.vraptor.proxy.Proxifier;
 import br.com.caelum.vraptor.resource.DefaultResourceClass;
 import br.com.caelum.vraptor.resource.DefaultResourceMethod;
@@ -41,12 +43,12 @@ import br.com.caelum.vraptor.resource.ResourceMethod;
 
 public class RouteBuilderTest {
 
-	private ParameterNameProvider provider;
+	private @Mock ParameterNameProvider provider;
+	private @Mock Converters converters;
 	private RouteBuilder builder;
 	private ResourceMethod method;
 	private Proxifier proxifier;
 	private TypeFinder typeFinder;
-	private Converters converters;
 
 	public static class MyResource {
 
@@ -57,18 +59,16 @@ public class RouteBuilderTest {
 
 	@Before
 	public void setUp() throws Exception {
-		provider = mock(ParameterNameProvider.class);
+		MockitoAnnotations.initMocks(this);
 
 		when(provider.parameterNamesFor(any(Method.class))).thenReturn(new String[] { "abc", "def", "ghi" });
 
 		method = new DefaultResourceMethod(new DefaultResourceClass(MyResource.class), MyResource.class.getMethod(
 				"method", String.class, Integer.class, BigDecimal.class));
 
-		proxifier = new DefaultProxifier();
+		proxifier = new JavassistProxifier(new ObjenesisInstanceCreator());
 
 		typeFinder = new DefaultTypeFinder(provider);
-		converters = mock(Converters.class);
-
 	}
 
 	@Test
@@ -188,14 +188,14 @@ public class RouteBuilderTest {
 			return def;
 		}
 	}
-    static class AbcResource {
-    	public void abc(Abc abc) {
-    	}
-    }
+	static class AbcResource {
+		public void abc(Abc abc) {
+		}
+	}
 
-    @Test
-    public void shouldSupportPathsWithDotsAndAsterisks() throws SecurityException, NoSuchMethodException {
-    	builder = newBuilder("/my/{abc.def*}");
+	@Test
+	public void shouldSupportPathsWithDotsAndAsterisks() throws SecurityException, NoSuchMethodException {
+		builder = newBuilder("/my/{abc.def*}");
 
 		Method method = AbcResource.class.getDeclaredMethods()[0];
 		builder.is(AbcResource.class, method);
@@ -203,41 +203,41 @@ public class RouteBuilderTest {
 		Route route = builder.build();
 
 		assertTrue(route.canHandle("/my/troublesome/uri"));
-    }
+	}
 
-    static class Generic<T> {
+	static class Generic<T> {
 
-    	public void gee(T abc) {
+		public void gee(T abc) {
 
-    	}
-    }
+		}
+	}
 
-    static class Specific extends Generic<X> {
+	static class Specific extends Generic<X> {
 
-    }
-    static class X {
-    	private Integer y;
+	}
+	static class X {
+		private Integer y;
 
-    	public Integer getY() {
+		public Integer getY() {
 			return y;
 		}
-    	public void setY(Integer y) {
+		public void setY(Integer y) {
 			this.y = y;
 		}
-    }
+	}
 
-    @Test
-    @Ignore("Should it work someday?")
-    public void shouldUseGenericParameters() throws SecurityException, NoSuchMethodException {
-    	builder = newBuilder("/my/{abc.y}");
+	@Test
+	@Ignore("Should it work someday?")
+	public void shouldUseGenericParameters() throws SecurityException, NoSuchMethodException {
+		builder = newBuilder("/my/{abc.y}");
 
-    	Method method = Generic.class.getDeclaredMethods()[0];
-    	builder.is(Specific.class, method);
+		Method method = Generic.class.getDeclaredMethods()[0];
+		builder.is(Specific.class, method);
 
-    	Route route = builder.build();
+		Route route = builder.build();
 
-    	assertTrue(route.canHandle("/my/123"));
-    	assertFalse(route.canHandle("/my/abc"));
-    }
+		assertTrue(route.canHandle("/my/123"));
+		assertFalse(route.canHandle("/my/abc"));
+	}
 
 }

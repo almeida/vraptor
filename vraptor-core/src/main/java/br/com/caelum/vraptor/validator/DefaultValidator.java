@@ -17,10 +17,14 @@
 
 package br.com.caelum.vraptor.validator;
 
+import static java.util.Collections.unmodifiableList;
+
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
+import java.util.ResourceBundle;
+
+import javax.inject.Inject;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +37,8 @@ import br.com.caelum.vraptor.proxy.Proxifier;
 import br.com.caelum.vraptor.util.test.MockResult;
 import br.com.caelum.vraptor.view.ValidationViewsFactory;
 
+import com.google.common.base.Supplier;
+
 /**
  * The default validator implementation.
  *
@@ -41,70 +47,86 @@ import br.com.caelum.vraptor.view.ValidationViewsFactory;
 @RequestScoped
 public class DefaultValidator extends AbstractValidator {
 
-    private static final Logger logger = LoggerFactory.getLogger(DefaultValidator.class);
+	private static final Logger logger = LoggerFactory.getLogger(DefaultValidator.class);
 
-    private final Result result;
+	private final class LocalizationSupplier implements Supplier<ResourceBundle> {
+		public ResourceBundle get() {
+			return localization.getBundle();
+		}
+	}
+
+	private final Result result;
 
 	private final List<Message> errors = new ArrayList<Message>();
 	private final ValidationViewsFactory viewsFactory;
-	private final List<BeanValidator> beanValidators; //registered bean-validators
-
+	private final BeanValidator beanValidator;
 	private final Outjector outjector;
-
 	private final Proxifier proxifier;
-
 	private final Localization localization;
 
-    public DefaultValidator(Result result, ValidationViewsFactory factory, Outjector outjector, Proxifier proxifier, List<BeanValidator> beanValidators, Localization localization) {
-        this.result = result;
+	public DefaultValidator() {
+		this(null, null, null, null, null, null);
+	}
+
+	@Inject
+	public DefaultValidator(Result result, ValidationViewsFactory factory, Outjector outjector, Proxifier proxifier, BeanValidator beanValidator, Localization localization) {
+	this.result = result;
 		this.viewsFactory = factory;
 		this.outjector = outjector;
 		this.proxifier = proxifier;
-		this.beanValidators = beanValidators;
+		this.beanValidator = beanValidator;
 		this.localization = localization;
-    }
+	}
 
-    public void checking(Validations validations) {
-        addAll(validations.getErrors(localization.getBundle()));
-    }
+	public void checking(Validations validations) {
+	addAll(validations.getErrors(new LocalizationSupplier()));
+	}
 
-    public void validate(Object object) {
-        if (beanValidators == null || beanValidators.isEmpty()) {
-            logger.warn("has no validators registered");
-        } else {
-            for (BeanValidator validator : beanValidators) {
-                addAll(validator.validate(object));
-            }
-        }
-    }
+	public void validate(Object object, Class<?>... groups) {
+	addAll(beanValidator.validate(object, groups));
+	}
 
-    public <T extends View> T onErrorUse(Class<T> view) {
-    	if (!hasErrors()) {
-    		return new MockResult(proxifier).use(view); //ignore anything, no errors occurred
-    	}
-    	result.include("errors", errors);
-    	outjector.outjectRequestMap();
-    	return viewsFactory.instanceFor(view, errors);
-    }
+	public void validateProperties(Object object, String... properties) {
+		addAll(beanValidator.validateProperties(object, properties));
+	}
+	
+	public void validateProperty(Object object, String property, Class<?>... groups) {
+		addAll(beanValidator.validateProperty(object, property, groups));
+	}
 
-    public void addAll(Collection<? extends Message> messages) {
+	public <T extends View> T onErrorUse(Class<T> view) {
+		if (!hasErrors()) {
+			return new MockResult(proxifier).use(view); //ignore anything, no errors occurred
+		}
+
+		if (logger.isDebugEnabled()) {
+			logger.debug("there are errors on result: {}", errors);
+		}
+
+		result.include("errors", errors);
+		outjector.outjectRequestMap();
+		return viewsFactory.instanceFor(view, errors);
+	}
+
+	public void addAll(Collection<? extends Message> messages) {
 		for (Message message : messages) {
 			add(message);
 		}
 	}
 
-    public void add(Message message) {
-    	if (message instanceof I18nMessage && !((I18nMessage) message).hasBundle()) {
-    		((I18nMessage) message).setBundle(localization.getBundle());
-    	}
-    	this.errors.add(message);
-    }
+	public void add(Message message) {
+		if (message instanceof I18nMessage && !((I18nMessage) message).hasBundle()) {
+			((I18nMessage) message).setLazyBundle(new LocalizationSupplier());
+		}
+		errors.add(message);
+	}
 
 	public boolean hasErrors() {
 		return !errors.isEmpty();
 	}
 
 	public List<Message> getErrors() {
-		return Collections.unmodifiableList(this.errors);
+		return unmodifiableList(errors);
 	}
+
 }

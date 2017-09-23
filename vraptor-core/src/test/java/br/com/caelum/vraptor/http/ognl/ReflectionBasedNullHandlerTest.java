@@ -32,9 +32,9 @@ import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
 
-import net.sf.cglib.proxy.Callback;
-import net.sf.cglib.proxy.Dispatcher;
-import net.sf.cglib.proxy.Enhancer;
+import javassist.util.proxy.MethodHandler;
+import javassist.util.proxy.ProxyFactory;
+import javassist.util.proxy.ProxyObject;
 import ognl.Ognl;
 import ognl.OgnlContext;
 import ognl.OgnlException;
@@ -49,6 +49,10 @@ import br.com.caelum.vraptor.converter.LongConverter;
 import br.com.caelum.vraptor.converter.StringConverter;
 import br.com.caelum.vraptor.core.Converters;
 import br.com.caelum.vraptor.ioc.Container;
+import br.com.caelum.vraptor.proxy.JavassistProxifier;
+import br.com.caelum.vraptor.proxy.ObjenesisInstanceCreator;
+import br.com.caelum.vraptor.proxy.Proxifier;
+import br.com.caelum.vraptor.proxy.ReflectionInstanceCreator;
 
 public class ReflectionBasedNullHandlerTest {
 
@@ -56,6 +60,7 @@ public class ReflectionBasedNullHandlerTest {
 	private @Mock Container container;
 	private @Mock EmptyElementsRemoval removal;
 	private @Mock Converters converters;
+	private Proxifier proxifier;
 
 	@Before
 	public void setup() throws Exception {
@@ -63,10 +68,13 @@ public class ReflectionBasedNullHandlerTest {
 
 		AbstractOgnlTestSupport.configOgnl(converters);
 
+	this.proxifier = new JavassistProxifier(new ReflectionInstanceCreator());
 		this.context = (OgnlContext) Ognl.createDefaultContext(null);
 		context.setTraceEvaluations(true);
 		context.put("removal", removal);
 		context.put("nullHandler", new GenericNullHandler(removal));
+		context.put("proxifier", proxifier);
+		
 		when(container.instanceFor(Converters.class)).thenReturn(converters);
 		when(converters.to(String.class)).thenReturn(new StringConverter());
 		when(converters.to(Long.class)).thenReturn(new LongConverter());
@@ -120,7 +128,7 @@ public class ReflectionBasedNullHandlerTest {
 	public void shouldFoundASetter() throws Exception {
 		final House aSimpleJavaBeans = new House();
 		final List<Method> methodsOfHouseClass = Arrays.asList(House.class.getMethods());
-		Method foundMethod = ReflectionBasedNullHandler.findSetter(aSimpleJavaBeans, "Mouse", Mouse.class);
+		Method foundMethod = new ReflectionBasedNullHandler(proxifier).findSetter(aSimpleJavaBeans, "Mouse", Mouse.class);
 		assertThat(methodsOfHouseClass, hasItem(foundMethod));
 		assertThat(foundMethod.toGenericString(), startsWith("public void "));
 		assertThat(foundMethod.getName(), is(startsWith("setMouse")));
@@ -131,7 +139,7 @@ public class ReflectionBasedNullHandlerTest {
 	public void shouldFoundAGetter() throws Exception {
 		final House aSimpleJavaBeans = new House();
 		final List<Method> methodsOfHouseClass = Arrays.asList(House.class.getMethods());
-		Method foundMethod = ReflectionBasedNullHandler.findGetter(aSimpleJavaBeans, "Mouse");
+		Method foundMethod = new ReflectionBasedNullHandler(proxifier).findGetter(aSimpleJavaBeans, "Mouse");
 		assertThat(methodsOfHouseClass, hasItem(foundMethod));
 		assertTrue(Mouse.class.isAssignableFrom(foundMethod.getReturnType()));
 		assertThat(foundMethod.getName(), is(startsWith("getMouse")));
@@ -139,11 +147,21 @@ public class ReflectionBasedNullHandlerTest {
 
 	@SuppressWarnings("unchecked")
 	public static <T> T proxify(final T pojo) {
-		Enhancer enhancer = new Enhancer();
-		enhancer.setSuperclass(pojo.getClass());
-		enhancer.setCallbackTypes(new Class[] { Dispatcher.class});
-		enhancer.setCallbacks(new Callback[] {  new Dispatcher() { public Object loadObject() throws Exception {return pojo;}	}});
-		return (T) enhancer.create();
+		
+	ProxyFactory factory = new ProxyFactory();
+	factory.setSuperclass(pojo.getClass());
+	
+	Class<?> proxyClass = factory.createClass();
+	Object proxyInstance = new ObjenesisInstanceCreator().instanceFor(proxyClass);
+	ProxyObject proxyObject = (ProxyObject) proxyInstance;
+	proxyObject.setHandler(new MethodHandler() {
+		public Object invoke(final Object self, final Method thisMethod, final Method proceed, Object[] args)
+			throws Throwable {
+		return pojo;
+		}
+	});	
+
+	return (T) proxyInstance;
 	}
 
 	@Test
@@ -151,7 +169,7 @@ public class ReflectionBasedNullHandlerTest {
 		final House aSimpleJavaBeans = new House();
 		House beanProxified = proxify(aSimpleJavaBeans);
 		final List<Method> methodsOfHouseClass = Arrays.asList(House.class.getMethods());
-		Method foundMethod = ReflectionBasedNullHandler.findSetter(beanProxified, "Mouse", Mouse.class);
+		Method foundMethod = new ReflectionBasedNullHandler(proxifier).findSetter(beanProxified, "Mouse", Mouse.class);
 		assertThat(methodsOfHouseClass, hasItem(foundMethod));
 		assertThat(foundMethod.toGenericString(), startsWith("public void "));
 		assertThat(foundMethod.getName(), is(startsWith("setMouse")));
@@ -163,7 +181,7 @@ public class ReflectionBasedNullHandlerTest {
 		final House aSimpleJavaBeans = new House();
 		House beanProxified = proxify(aSimpleJavaBeans);
 		final List<Method> methodsOfHouseClass = Arrays.asList(House.class.getMethods());
-		Method foundMethod = ReflectionBasedNullHandler.findGetter(beanProxified, "Mouse");
+		Method foundMethod = new ReflectionBasedNullHandler(proxifier).findGetter(beanProxified, "Mouse");
 		assertThat(methodsOfHouseClass, hasItem(foundMethod));
 		assertTrue(Mouse.class.isAssignableFrom(foundMethod.getReturnType()));
 		assertThat(foundMethod.getName(), is(startsWith("getMouse")));

@@ -17,9 +17,11 @@
 package br.com.caelum.vraptor.proxy;
 
 /**
+ * Defines calls to the overriden original method.
+ * 
  * @author Fabio Kung
  */
 public interface SuperMethod {
 
-    Object invoke(Object proxy, Object[] args);
+	Object invoke(Object proxy, Object[] args);
 }

@@ -17,6 +17,12 @@
 
 package br.com.caelum.vraptor.ioc.spring;
 
+import static org.mockito.Matchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import java.util.Collections;
+import java.util.Enumeration;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -24,7 +30,6 @@ import java.util.concurrent.TimeUnit;
 
 import javax.servlet.ServletRequestEvent;
 
-import org.jmock.Expectations;
 import org.springframework.web.context.request.RequestContextListener;
 
 import br.com.caelum.vraptor.core.RequestInfo;
@@ -37,22 +42,22 @@ import br.com.caelum.vraptor.test.HttpServletRequestMock;
 import br.com.caelum.vraptor.test.HttpSessionMock;
 
 public class SpringProviderRegisteringComponentsTest extends GenericContainerTest {
-    private int counter;
+	protected int counter;
 
-    @Override
+	@Override
 	protected ContainerProvider getProvider() {
-        return new SpringProvider();
-    }
-
-    @Override
+	return new SpringProvider();
+	}
+	
+	@Override
 	protected <T> T executeInsideRequest(final WhatToDo<T> execution) {
-        Callable<T> task = new Callable<T>(){
+	Callable<T> task = new Callable<T>(){
 			public T call() throws Exception {
 				T result = null;
 				HttpSessionMock session = new HttpSessionMock(context, "session" + ++counter);
 				HttpServletRequestMock httpRequest = new HttpServletRequestMock(session,
-						mockery.mock(MutableRequest.class, "request" + counter), mockery);
-				MutableResponse response = mockery.mock(MutableResponse.class, "response" + counter);
+						mock(MutableRequest.class, "request" + counter));
+				MutableResponse response = mock(MutableResponse.class, "response" + counter);
 
 				RequestInfo request = new RequestInfo(context, null, httpRequest, response);
 				VRaptorRequestHolder.setRequestForCurrentThread(request);
@@ -75,20 +80,15 @@ public class SpringProviderRegisteringComponentsTest extends GenericContainerTes
 		catch (Exception e) {
 			throw new RuntimeException(e);
 		}
-    }
+	}
 
-    @Override
-    protected void configureExpectations() {
-        mockery.checking(new Expectations() {
-            {
-				allowing(context).getAttribute("org.springframework.web.context.WebApplicationContext.ROOT");
-				will(returnValue(null));
+	@Override
+	protected void configureExpectations() {
+		when(context.getRealPath(anyString()))
+			.thenReturn(SpringBasedContainer.class.getResource("../fixture").getFile());
 
-				allowing(context).getRealPath(with(any(String.class)));
-				will(returnValue(SpringBasedContainer.class.getResource("../fixture").getFile()));
-
-                allowing(context);
-            }
-        });
-    }
+		Enumeration<String> emptyEnumeration = Collections.enumeration(Collections.<String>emptyList());
+		when(context.getInitParameterNames()).thenReturn(emptyEnumeration);
+		when(context.getAttributeNames()).thenReturn(emptyEnumeration);
+   }
 }

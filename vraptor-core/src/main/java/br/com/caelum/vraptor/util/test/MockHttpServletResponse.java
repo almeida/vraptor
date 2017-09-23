@@ -20,7 +20,6 @@ package br.com.caelum.vraptor.util.test;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.io.UnsupportedEncodingException;
 import java.util.Collection;
 import java.util.Locale;
 
@@ -44,7 +43,9 @@ public class MockHttpServletResponse implements HttpServletResponse {
 	
 	private PrintWriter writer;
 	private String contentType;
-	private ByteArrayOutputStream content =  new ByteArrayOutputStream();
+	private final ByteArrayOutputStream content =  new ByteArrayOutputStream();
+	
+	private int status;
 	
 	public PrintWriter getWriter() {
 		if (this.writer == null) {
@@ -225,7 +226,7 @@ public class MockHttpServletResponse implements HttpServletResponse {
 	 * TODO Not implemented
 	 */
 	public void setStatus(int sc) {
-		
+		this.status = sc;
 	}
 	/**
 	 * TODO Not implemented
@@ -237,7 +238,7 @@ public class MockHttpServletResponse implements HttpServletResponse {
 	 * TODO Not implemented
 	 */
 	public int getStatus() {
-		return 0;
+		return status;
 	}
 	/**
 	 * TODO Not implemented

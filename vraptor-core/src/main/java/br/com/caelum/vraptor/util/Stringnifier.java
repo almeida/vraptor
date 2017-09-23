@@ -21,7 +21,11 @@ import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 
-public class Stringnifier {
+public final class Stringnifier {
+
+	private Stringnifier() {
+		throw new InstantiationError( "Must not instantiate this class" );
+	}
 
 	static String argumentsToString(Class<?>[] parameterTypes) {
 		StringBuilder builder = new StringBuilder();
@@ -30,14 +34,14 @@ public class Stringnifier {
 			if (i != parameterTypes.length - 1)
 				builder.append(", ");
 		}
-		return "(" + builder.toString() + ")";
+		return '(' + builder.toString() + ')';
 	}
 
 	public static String simpleNameFor(AccessibleObject object) {
 		if (object instanceof Method) {
 
 			Method method = (Method) object;
-			return method.getDeclaringClass().getSimpleName() + "." + method.getName()
+			return method.getDeclaringClass().getSimpleName() + '.' + method.getName()
 					+ argumentsToString(method.getParameterTypes());
 		}
 		if (object instanceof Constructor<?>) {

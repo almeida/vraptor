@@ -17,10 +17,12 @@
 
 package br.com.caelum.vraptor.converter.jodatime;
 
+import static org.joda.time.format.DateTimeFormat.shortDateTime;
+
 import java.text.MessageFormat;
-import java.util.Date;
 import java.util.ResourceBundle;
 
+import org.joda.time.DateTime;
 import org.joda.time.LocalDateTime;
 
 import br.com.caelum.vraptor.Convert;
@@ -36,19 +38,20 @@ import br.com.caelum.vraptor.core.Localization;
 @Convert(LocalDateTime.class)
 public class LocalDateTimeConverter implements Converter<LocalDateTime> {
 
-    private final Localization localization;
-    
+	private final Localization localization;
+	
 	public LocalDateTimeConverter(Localization localization) {
-        this.localization = localization;
-    }
+		this.localization = localization;
+	}
 
-    public LocalDateTime convert(String value, Class<? extends LocalDateTime> type, ResourceBundle bundle) {
+	public LocalDateTime convert(String value, Class<? extends LocalDateTime> type, ResourceBundle bundle) {
 		try {
-			Date datetime = new LocaleBasedJodaTimeConverter(localization).convert(value, type);
-			if (datetime == null) {
+			DateTime out = new LocaleBasedJodaTimeConverter(localization).convert(value, shortDateTime());
+			if (out == null) {
 				return null;
 			}
-			return LocalDateTime.fromDateFields(datetime);
+		
+			return out.toLocalDateTime();
 		} catch (Exception e) {
 			throw new ConversionError(MessageFormat.format(bundle.getString("is_not_a_valid_datetime"), value));
 		}

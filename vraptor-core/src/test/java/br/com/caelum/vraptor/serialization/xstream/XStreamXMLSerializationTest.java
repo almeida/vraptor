@@ -32,18 +32,18 @@ import com.thoughtworks.xstream.annotations.XStreamAlias;
 
 public class XStreamXMLSerializationTest {
 
-	private Serialization serialization;
-	private ByteArrayOutputStream stream;
+	protected Serialization serialization;
+	protected ByteArrayOutputStream stream;
 
 	@Before
-    public void setup() throws Exception {
-        this.stream = new ByteArrayOutputStream();
+	public void setup() throws Exception {
+	this.stream = new ByteArrayOutputStream();
 
-        HttpServletResponse response = mock(HttpServletResponse.class);
-        when(response.getWriter()).thenReturn(new PrintWriter(stream));
-
-		this.serialization = new XStreamXMLSerialization(response, new DefaultTypeNameExtractor(), new NullProxyInitializer());
-    }
+	HttpServletResponse response = mock(HttpServletResponse.class);
+	when(response.getWriter()).thenReturn(new PrintWriter(stream));
+	
+		this.serialization = new XStreamXMLSerialization(response, new DefaultTypeNameExtractor(), new NullProxyInitializer(), XStreamBuilderImpl.cleanInstance());
+	}
 
 	public static class Address {
 		String street;
@@ -119,7 +119,7 @@ public class XStreamXMLSerializationTest {
 	}
 
 	@Test
-    public void shouldSerializeGenericClass() {
+	public void shouldSerializeGenericClass() {
 		String expectedResult = "<genericWrapper>\n  <entityList class=\"list\">\n    <client>\n      <name>washington botelho</name>\n    </client>\n    <client>\n      <name>washington botelho</name>\n    </client>\n  </entityList>\n  <total>2</total>\n</genericWrapper>";
 
 		Collection<Client> entityList = new ArrayList<Client>();
@@ -128,10 +128,10 @@ public class XStreamXMLSerializationTest {
 
 		GenericWrapper<Client> wrapper = new GenericWrapper<Client>(entityList, entityList.size());
 
-        serialization.from(wrapper).include("entityList").serialize();
+	serialization.from(wrapper).include("entityList").serialize();
 
-        assertThat(result(), is(equalTo(expectedResult)));
-    }
+	assertThat(result(), is(equalTo(expectedResult)));
+	}
 
 	@Test
 	public void shouldSerializeMaps() {
@@ -204,6 +204,13 @@ public class XStreamXMLSerializationTest {
 		assertThat(result(), containsString("<price>12.99</price>"));
 		assertThat(result(), containsString("</items>"));
 	}
+	
+	@Test
+	public void shouldWorkWithEmptyCollections() {
+		serialization.from(new ArrayList<Order>(), "orders").serialize();
+		
+		assertThat(result(), containsString("<orders/>"));
+	}
 	@Test
 	public void shouldIncludeAllFieldsWhenRecursive() {
 		Order order = new Order(new Client("guilherme silveira"), 15.0, "pack it nicely, please",
@@ -226,6 +233,13 @@ public class XStreamXMLSerializationTest {
 		Order order = new Order(new Client("guilherme silveira"), 15.0, "pack it nicely, please",
 				new Item("name", 12.99));
 		serialization.from(order).include("wrongFieldName").serialize();
+	}
+	
+	@Test(expected=IllegalArgumentException.class)
+	public void shouldThrowAnExceptionWhenYouIncludeANonExistantFieldInsideOther() {
+		Order order = new Order(new Client("guilherme silveira"), 15.0, "pack it nicely, please",
+				new Item("name", 12.99));
+		serialization.from(order).include("wrongFieldName.another").serialize();
 	}
 
 	@Test
@@ -300,6 +314,33 @@ public class XStreamXMLSerializationTest {
 		assertThat(result(), not(containsString("12.99")));
 		assertThat(result(), containsString("</items>"));
 	}
+	
+	@Test
+	public void shouldExcludeAllPrimitiveFields() {
+		String expectedResult = "<order/>";
+		Order order = new Order(new Client("nykolas lima"), 15.0, "gift bags, please");
+		serialization.from(order).excludeAll().serialize();
+		assertThat(result(), is(equalTo(expectedResult)));
+	}
+	
+	@Test
+	public void shouldExcludeAllPrimitiveParentFields() {
+		String expectedResult = "<advancedOrder/>";
+		Order order = new AdvancedOrder(null, 15.0, "pack it nicely, please", "complex package");
+		serialization.from(order).excludeAll().serialize();
+		assertThat(result(), is(equalTo(expectedResult)));
+	}
+	
+	@Test
+	public void shouldExcludeAllThanIncludeAndSerialize() {
+		Order order = new Order(new Client("nykolas lima"), 15.0, "gift bags, please");
+		serialization.from(order).excludeAll().include("price").serialize();
+		assertThat(result(), containsString("<order>"));
+		assertThat(result(), containsString("<price>"));
+		assertThat(result(), containsString("15.0"));
+		assertThat(result(), containsString("</price>"));
+		assertThat(result(), containsString("</order>"));
+	}
 
 	static class WithAlias {
 		@SuppressWarnings("unused")
@@ -334,6 +375,26 @@ public class XStreamXMLSerializationTest {
 
 	private String result() {
 		return new String(stream.toByteArray());
+	}
+	
+	/**
+	 * @bug #400
+	 */
+	class A {
+		C field1 = new C();
+	}
+
+	class B extends A {
+		C field2 = new C();
+	}
+	class C {
+		
+	}
+	
+	@Test
+	public void shouldBeAbleToIncludeSubclassesFields() throws Exception {
+		serialization.from(new B()).include("field2").serialize();
+		assertThat(result(), is("<b>\n  <field2/>\n</b>"));
 	}
 
 }

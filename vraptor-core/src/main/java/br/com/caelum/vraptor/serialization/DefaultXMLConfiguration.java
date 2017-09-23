@@ -25,10 +25,6 @@ import br.com.caelum.vraptor.ioc.Component;
 @Component
 public class DefaultXMLConfiguration implements XMLConfiguration {
 
-//	private static final List<Class<?>> PRIMITIVE_TYPES = Arrays.asList(
-//			String.class, Integer.class, BigInteger.class, BigDecimal.class,
-//
-//			);
 	public String nameFor(String name) {
 		if(name.length()==1) {
 			return name.toLowerCase();
@@ -38,7 +34,7 @@ public class DefaultXMLConfiguration implements XMLConfiguration {
 		for(int i=1;i<name.length();i++) {
 			char c = name.charAt(i);
 			if(Character.isUpperCase(c)) {
-				content.append("_");
+				content.append('_');
 				content.append(Character.toLowerCase(c));
 			} else {
 				content.append(c);

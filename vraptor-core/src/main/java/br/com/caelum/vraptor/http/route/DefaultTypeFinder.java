@@ -42,7 +42,7 @@ public class DefaultTypeFinder implements TypeFinder {
 		for (String path : parameterPaths) {
 			for (int i = 0; i < parameterNamesFor.length; i++) {
 				String name = parameterNamesFor[i];
-				if (path.startsWith(name + ".") || path.equals(name)) {
+				if (path.startsWith(name + '.') || path.equals(name)) {
 					String[] items = path.split("\\.");
 					Class<?> type = method.getParameterTypes()[i];
 					for (int j = 1; j < items.length; j++) {
@@ -59,7 +59,7 @@ public class DefaultTypeFinder implements TypeFinder {
 		}
 		return result;
 	}
-	private String upperFirst(String item) {
+	private static String upperFirst(String item) {
 		return item.substring(0, 1).toUpperCase() + item.substring(1);
 	}
 

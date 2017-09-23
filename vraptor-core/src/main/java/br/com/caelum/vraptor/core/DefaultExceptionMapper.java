@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory;
 
 import br.com.caelum.vraptor.Result;
 import br.com.caelum.vraptor.interceptor.ExceptionHandlerInterceptor;
+import br.com.caelum.vraptor.ioc.Component;
 import br.com.caelum.vraptor.proxy.Proxifier;
 
 /**
@@ -40,45 +41,46 @@ import br.com.caelum.vraptor.proxy.Proxifier;
  * @see ExceptionHandlerInterceptor
  * @since 3.2
  */
+@Component
 public class DefaultExceptionMapper
-    implements ExceptionMapper {
+	implements ExceptionMapper {
 
-    private static final Logger logger = LoggerFactory.getLogger(DefaultExceptionMapper.class);
+	private static final Logger logger = LoggerFactory.getLogger(DefaultExceptionMapper.class);
 
-    private final Map<Class<? extends Exception>, ExceptionRecorder<Result>> exceptions;
-    private final Proxifier proxifier;
+	private final Map<Class<? extends Exception>, ExceptionRecorder<Result>> exceptions;
+	private final Proxifier proxifier;
 
-    public DefaultExceptionMapper(Proxifier proxifier) {
-        this.proxifier = proxifier;
-        this.exceptions = newLinkedHashMap();
-    }
+	public DefaultExceptionMapper(Proxifier proxifier) {
+		this.proxifier = proxifier;
+		this.exceptions = newLinkedHashMap();
+	}
 
-    public Result record(Class<? extends Exception> exception) {
-        if (exception == null) {
-            throw new NullPointerException("Exception cannot be null.");
-        }
+	public Result record(Class<? extends Exception> exception) {
+		if (exception == null) {
+			throw new NullPointerException("Exception cannot be null.");
+		}
+	
+		ExceptionRecorder<Result> instance = new ExceptionRecorder<Result>(proxifier);
+		exceptions.put(exception, instance);
+	
+		return proxifier.proxify(Result.class, instance);
+	}
 
-        ExceptionRecorder<Result> instance = new ExceptionRecorder<Result>(proxifier);
-        exceptions.put(exception, instance);
+	public ExceptionRecorder<Result> findByException(Exception e) {
+		logger.debug("find for exception {}", e.getClass());
+	
+		for (Entry<Class<? extends Exception>, ExceptionRecorder<Result>> entry : exceptions.entrySet()) {
+			if (entry.getKey().isInstance(e)) {
+			logger.debug("found exception mapping: {} -> {}", entry.getKey(), entry.getValue());
+	
+			return entry.getValue();
+			}
+		}
+	
+		return hasExceptionCause(e) ? findByException((Exception) e.getCause()) : null;
+	}
 
-        return proxifier.proxify(Result.class, instance);
-    }
-
-    public ExceptionRecorder<Result> findByException(Exception e) {
-        logger.debug("find for exception {}", e.getClass());
-
-        for (Entry<Class<? extends Exception>, ExceptionRecorder<Result>> entry : exceptions.entrySet()) {
-            if (entry.getKey().isInstance(e)) {
-                logger.debug("found exception mapping: {} -> {}", entry.getKey(), entry.getValue());
-
-                return entry.getValue();
-            }
-        }
-
-        return hasExceptionCause(e) ? findByException((Exception) e.getCause()) : null;
-    }
-
-    private boolean hasExceptionCause(Exception e) {
-        return e.getCause() != null && e.getCause() instanceof Exception;
-    }
+	private static boolean hasExceptionCause(Exception e) {
+		return e.getCause() != null && e.getCause() instanceof Exception;
+	}
 }

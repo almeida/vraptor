@@ -17,6 +17,8 @@
 
 package br.com.caelum.vraptor.ioc.pico;
 
+import static org.mockito.Mockito.mock;
+
 import java.util.Arrays;
 import java.util.List;
 
@@ -32,34 +34,33 @@ import br.com.caelum.vraptor.test.HttpServletRequestMock;
 import br.com.caelum.vraptor.test.HttpSessionMock;
 
 public class PicoProviderTest extends GenericContainerTest {
-    private int counter;
+	private int counter;
 
-    @Test
-    public void canProvidePicoSpecificApplicationScopedComponents() {
-        List<Class<?>> components = Arrays.asList();
-        checkAvailabilityFor(true, components);
-        mockery.assertIsSatisfied();
-    }
+	@Test
+	public void canProvidePicoSpecificApplicationScopedComponents() {
+	List<Class<?>> components = Arrays.asList();
+	checkAvailabilityFor(true, components);
+	}
 
-    @Override
-    protected ContainerProvider getProvider() {
-        return new PicoProvider();
-    }
+	@Override
+	protected ContainerProvider getProvider() {
+	return new PicoProvider();
+	}
 
-    @Override
-    protected <T> T executeInsideRequest(WhatToDo<T> execution) {
-        final HttpSessionMock session = new HttpSessionMock(context, "session" + ++counter);
-        final MutableRequest request = new HttpServletRequestMock(session,
-        		mockery.mock(MutableRequest.class, "request" + counter), mockery);
-        MutableResponse response = mockery.mock(MutableResponse.class, "response" + counter);
-        RequestInfo webRequest = new RequestInfo(context, null, request, response);
-        return execution.execute(webRequest, counter);
-    }
+	@Override
+	protected <T> T executeInsideRequest(WhatToDo<T> execution) {
+	final HttpSessionMock session = new HttpSessionMock(context, "session" + ++counter);
+	final MutableRequest request = new HttpServletRequestMock(session,
+			mock(MutableRequest.class, "request" + counter));
+	MutableResponse response = mock(MutableResponse.class, "response" + counter);
+	RequestInfo webRequest = new RequestInfo(context, null, request, response);
+	return execution.execute(webRequest, counter);
+	}
 
-    /**
-     * Children providers can set custom expectations.
-     */
-    @Override
-    protected void configureExpectations() {
-    }
+	/**
+	 * Children providers can set custom expectations.
+	 */
+	@Override
+	protected void configureExpectations() {
+	}
 }

@@ -20,7 +20,6 @@ package br.com.caelum.vraptor.converter.l10n;
 import static com.google.common.base.Strings.isNullOrEmpty;
 
 import java.text.DecimalFormat;
-import java.text.DecimalFormatSymbols;
 import java.text.MessageFormat;
 import java.text.ParseException;
 import java.util.Locale;
@@ -43,27 +42,26 @@ import br.com.caelum.vraptor.ioc.RequestScoped;
 @Convert(Float.class)
 @RequestScoped
 public class LocaleBasedFloatConverter
-    implements Converter<Float> {
+	implements Converter<Float> {
 
-    private final Localization localization;
+	private final Localization localization;
 
-    public LocaleBasedFloatConverter(Localization localization) {
-        this.localization = localization;
-    }
+	public LocaleBasedFloatConverter(Localization localization) {
+		this.localization = localization;
+	}
 
-    public Float convert(String value, Class<? extends Float> type, ResourceBundle bundle) {
-        if (isNullOrEmpty(value)) {
-            return null;
-        }
-
-        try {
-            final Locale locale = localization.getLocale();
-            DecimalFormat fmt = new DecimalFormat("##0,00", new DecimalFormatSymbols(locale));
-
-            // DecimalFormat.parse can return long values, so it's more securely call floatValue
-            return fmt.parse(value).floatValue();
-        } catch (ParseException e) {
-            throw new ConversionError(MessageFormat.format(bundle.getString("is_not_a_valid_number"), value));
-        }
-    }
+	public Float convert(String value, Class<? extends Float> type, ResourceBundle bundle) {
+		if (isNullOrEmpty(value)) {
+			return null;
+		}
+	
+		try {
+			final Locale locale = localization.getLocale();
+			DecimalFormat fmt = (DecimalFormat) DecimalFormat.getInstance(locale);
+	
+			return fmt.parse(value).floatValue();
+		} catch (ParseException e) {
+			throw new ConversionError(MessageFormat.format(bundle.getString("is_not_a_valid_number"), value));
+		}
+	}
 }

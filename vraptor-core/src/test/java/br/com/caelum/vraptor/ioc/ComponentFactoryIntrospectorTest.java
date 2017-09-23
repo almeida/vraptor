@@ -17,7 +17,6 @@
 package br.com.caelum.vraptor.ioc;
 
 import static org.junit.Assert.assertEquals;
-import junit.framework.Assert;
 
 import org.junit.Test;
 
@@ -60,14 +59,14 @@ public class ComponentFactoryIntrospectorTest {
 
 	@Test
 	public void shoudWorkWithSubclassesOfComponenetFactoryImplementations() {
-		Class<?> c = new ComponentFactoryIntrospector().targetTypeForComponentFactory((ClassThatImplementsCFExtending.class));
-		Assert.assertEquals(String.class, c);
+		Class<?> c = new ComponentFactoryIntrospector().targetTypeForComponentFactory(ClassThatImplementsCFExtending.class);
+		assertEquals(String.class, c);
 	}
 
 	@Test
 	public void shoudWorkWithImplementationsOfComponenetFactorySubinterfacesImplementations() {
-		Class<?> c = new ComponentFactoryIntrospector().targetTypeForComponentFactory((ClassThatImplementsCFIndirectly.class));
-		Assert.assertEquals(String.class, c);
+		Class<?> c = new ComponentFactoryIntrospector().targetTypeForComponentFactory(ClassThatImplementsCFIndirectly.class);
+		assertEquals(String.class, c);
 	}
 
 	interface InterfaceThatExtendCF extends ComponentFactory<String> {
@@ -87,6 +86,6 @@ public class ComponentFactoryIntrospectorTest {
 
 	@Test(expected = ComponentRegistrationException.class)
 	public void shoudNotWorkWithClassesThatDoesNotImplementComponentFactory() {
-		new ComponentFactoryIntrospector().targetTypeForComponentFactory((ClassThatIsNotCFAtAll.class));
+		new ComponentFactoryIntrospector().targetTypeForComponentFactory(ClassThatIsNotCFAtAll.class);
 	}
 }

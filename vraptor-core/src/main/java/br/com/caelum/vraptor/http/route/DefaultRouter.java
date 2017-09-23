@@ -17,6 +17,11 @@
 
 package br.com.caelum.vraptor.http.route;
 
+import static com.google.common.base.Predicates.instanceOf;
+import static com.google.common.collect.Iterables.any;
+import static java.util.Arrays.asList;
+
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.text.MessageFormat;
 import java.util.ArrayList;
@@ -35,8 +40,8 @@ import br.com.caelum.vraptor.ioc.ApplicationScoped;
 import br.com.caelum.vraptor.proxy.Proxifier;
 import br.com.caelum.vraptor.resource.HttpMethod;
 import br.com.caelum.vraptor.resource.ResourceMethod;
-import br.com.caelum.vraptor.util.collections.Filters;
 
+import com.google.common.base.Predicate;
 import com.google.common.collect.Collections2;
 import com.google.common.collect.Iterators;
 
@@ -55,15 +60,15 @@ public class DefaultRouter implements Router {
 	private final TypeFinder finder;
 	private final Converters converters;
 	private final ParameterNameProvider nameProvider;
-    private final Evaluator evaluator;
+	private final Evaluator evaluator;
 
-    public DefaultRouter(RoutesConfiguration config,
+	public DefaultRouter(RoutesConfiguration config,
 			Proxifier proxifier, TypeFinder finder, Converters converters, ParameterNameProvider nameProvider, Evaluator evaluator) {
 		this.proxifier = proxifier;
 		this.finder = finder;
 		this.converters = converters;
 		this.nameProvider = nameProvider;
-        this.evaluator = evaluator;
+	this.evaluator = evaluator;
 		config.config(this);
 	}
 
@@ -90,7 +95,7 @@ public class DefaultRouter implements Router {
 		return route.resourceMethod(request, uri);
 	}
 
-	private void checkIfThereIsAnotherRoute(String uri, HttpMethod method, Iterator<Route> iterator, Route route) {
+	private static void checkIfThereIsAnotherRoute(String uri, HttpMethod method, Iterator<Route> iterator, Route route) {
 		if (iterator.hasNext()) {
 			Route otherRoute = iterator.next();
 			if (route.getPriority() == otherRoute.getPriority()) {
@@ -104,7 +109,7 @@ public class DefaultRouter implements Router {
 
 
 	private Collection<Route> routesMatchingUriAndMethod(String uri, HttpMethod method) {
-		Collection<Route> routesMatchingMethod = Collections2.filter(routesMatchingUri(uri), Filters.allow(method));
+		Collection<Route> routesMatchingMethod = Collections2.filter(routesMatchingUri(uri), allow(method));
 		if (routesMatchingMethod.isEmpty()) {
 			EnumSet<HttpMethod> allowed = allowedMethodsFor(uri);
 			throw new MethodNotAllowedException(allowed, method.toString());
@@ -121,7 +126,7 @@ public class DefaultRouter implements Router {
 	}
 
 	private Collection<Route> routesMatchingUri(String uri) {
-		Collection<Route> routesMatchingURI = Collections2.filter(routes, Filters.canHandle(uri));
+		Collection<Route> routesMatchingURI = Collections2.filter(routes, canHandle(uri));
 		if (routesMatchingURI.isEmpty()) {
 			throw new ResourceNotFoundException();
 		}
@@ -129,16 +134,16 @@ public class DefaultRouter implements Router {
 	}
 
 	public <T> String urlFor(Class<T> type, Method method, Object... params) {
-		Iterator<Route> matches = Iterators.filter(routes.iterator(), Filters.canHandle(type, method));
+		Iterator<Route> matches = Iterators.filter(routes.iterator(), canHandle(type, method));
 		if (matches.hasNext()) {
 			try {
 				return matches.next().urlFor(type, method, params);
 			} catch (Exception e) {
-				throw new VRaptorException("The selected route is invalid for redirection: " + type.getName() + "."
+				throw new VRaptorException("The selected route is invalid for redirection: " + type.getName() + '.'
 						+ method.getName(), e);
 			}
 		}
-		throw new RouteNotFoundException("The selected route is invalid for redirection: " + type.getName() + "."
+		throw new RouteNotFoundException("The selected route is invalid for redirection: " + type.getName() + '.'
 				+ method.getName());
 	}
 
@@ -146,4 +151,29 @@ public class DefaultRouter implements Router {
 		return Collections.unmodifiableList(new ArrayList<Route>(routes));
 	}
 
+
+
+	private Predicate<Route> canHandle(final Class<?> type, final Method method) {
+		return new Predicate<Route>() {
+			public boolean apply(Route route) {
+			return route.canHandle(type, method);
+			}
+		};
+	}
+
+	private Predicate<Route> canHandle(final String uri) {
+		return new Predicate<Route>() {
+			public boolean apply(Route route) {
+			return route.canHandle(uri);
+			}
+		};
+	}
+	
+	private Predicate<Route> allow(final HttpMethod method) {
+		return new Predicate<Route>() {
+			public boolean apply(Route route) {
+			return route.allowedMethods().contains(method);
+			}
+		};
+	}
 }

@@ -34,33 +34,33 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Path {
 
+	public static final int LOWEST = Integer.MAX_VALUE;
+	public static final int LOW = Integer.MAX_VALUE/4*3;
+	public static final int DEFAULT = Integer.MAX_VALUE/2;
+	public static final int HIGH = Integer.MAX_VALUE/4;
+	public static final int HIGHEST = 0;
+
 	/**
 	 * All paths that will be mapped to an annotated Resource method. The path value also can be 
 	 * configured in class level and using {@link Get}, {@link Post}, {@link Trace} and {@link Delete} 
 	 * annotations. If both {@link Path} and these annotations are used, an exception will be thrown.
 	 * @return
 	 */
-    String[] value();
+	String[] value();
 
-    /**
-     * Used to decide which path will be tested first.
-     * Paths with priority HIGHEST are tested before paths with priority HIGH,
-     * which are tested before paths with priority DEFAULT, and so on.
-     * <pre>
-	     @Path(value="/url", priority=Path.HIGHEST)
-	     @Path(value="/url", priority=Path.HIGH)
-	     @Path(value="/url", priority=Path.DEFAULT)
-	     @Path(value="/url", priority=Path.LOW)
-	     @Path(value="/url", priority=Path.LOWEST)
-     </pre>
-     *
-     */
-    int priority() default DEFAULT;
-
-    public static final int LOWEST = Integer.MAX_VALUE;
-    public static final int LOW = Integer.MAX_VALUE/4*3;
-    public static final int DEFAULT = Integer.MAX_VALUE/2;
-    public static final int HIGH = Integer.MAX_VALUE/4;
-    public static final int HIGHEST = 0;
-
+	/**
+	 * Used to decide which path will be tested first.
+	 * Paths with priority HIGHEST are tested before paths with priority HIGH,
+	 * which are tested before paths with priority DEFAULT, and so on.
+	 * <pre>
+		 @Path(value="/url", priority=Path.HIGHEST)
+		 @Path(value="/url", priority=Path.HIGH)
+		 @Path(value="/url", priority=Path.DEFAULT)
+		 @Path(value="/url", priority=Path.LOW)
+		 @Path(value="/url", priority=Path.LOWEST)
+	 </pre>
+	 *
+	 */
+	int priority() default DEFAULT;
+	
 }

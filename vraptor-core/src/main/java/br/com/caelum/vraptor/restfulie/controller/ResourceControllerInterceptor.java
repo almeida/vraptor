@@ -103,8 +103,7 @@ public class ResourceControllerInterceptor<T extends HypermediaResource> impleme
 	private T retrieveResource(Class<?> found) {
 		String parameterName = lowerFirstChar(found.getSimpleName()) + ".id";
 		String id = info.getRequest().getParameter(parameterName);
-		T resource = control.retrieve(id);
-		return resource;
+		return control.retrieve(id);
 	}
 
 	private boolean allows(T resource, Method method) {
@@ -119,7 +118,7 @@ public class ResourceControllerInterceptor<T extends HypermediaResource> impleme
 		return false;
 	}
 
-	private String lowerFirstChar(String simpleName) {
+	private static String lowerFirstChar(String simpleName) {
 		if(simpleName.length()==1) {
 			return simpleName.toLowerCase();
 		}

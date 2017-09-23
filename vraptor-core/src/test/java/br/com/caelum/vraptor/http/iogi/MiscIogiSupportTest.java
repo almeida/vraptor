@@ -30,6 +30,7 @@ package br.com.caelum.vraptor.http.iogi;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
+import static org.mockito.Mockito.when;
 
 import java.util.Calendar;
 import java.util.GregorianCalendar;
@@ -37,10 +38,10 @@ import java.util.Locale;
 
 import ognl.OgnlException;
 
-import org.jmock.Expectations;
-import org.jmock.Mockery;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import br.com.caelum.iogi.Iogi;
 import br.com.caelum.iogi.parameters.Parameter;
@@ -60,82 +61,76 @@ import br.com.caelum.iogi.util.NullDependencyProvider;
  */
 public class MiscIogiSupportTest {
 
-    private Mockery mockery;
+	private Iogi iogi;
+	private @Mock LocaleProvider mockLocaleProvider;
 
-    private Iogi iogi;
-	private LocaleProvider mockLocaleProvider;
+	@Before
+	public void setup() {
+		MockitoAnnotations.initMocks(this);
+		iogi = new Iogi(new NullDependencyProvider(), mockLocaleProvider);
+	}
 
-    @Before
-    public void setup() {
-        this.mockery = new Mockery();
-        this.mockLocaleProvider = mockery.mock(LocaleProvider.class);
-    	this.iogi = new Iogi(new NullDependencyProvider(), mockLocaleProvider);
-    }
+	public static class Cat {
+	private Leg firstLeg;
 
-    public static class Cat {
-        private Leg firstLeg;
+	public void setFirstLeg(Leg firstLeg) {
+		this.firstLeg = firstLeg;
+	}
 
-        public void setFirstLeg(Leg firstLeg) {
-            this.firstLeg = firstLeg;
-        }
+	public Leg getFirstLeg() {
+		return firstLeg;
+	}
+	}
 
-        public Leg getFirstLeg() {
-            return firstLeg;
-        }
-    }
+	public static class Leg {
+	private Integer id;
+	private Calendar birthDay; // weird leg birthday!!
 
-    public static class Leg {
-        private Integer id;
-        private Calendar birthDay; // weird leg birthday!!
+	public void setId(Integer id) {
+		this.id = id;
+	}
 
-        public void setId(Integer id) {
-            this.id = id;
-        }
+	public Integer getId() {
+		return id;
+	}
 
-        public Integer getId() {
-            return id;
-        }
+	public void setBirthDay(Calendar birthDay) {
+		this.birthDay = birthDay;
+	}
 
-        public void setBirthDay(Calendar birthDay) {
-            this.birthDay = birthDay;
-        }
+	public Calendar getBirthDay() {
+		return birthDay;
+	}
+	}
 
-        public Calendar getBirthDay() {
-            return birthDay;
-        }
-    }
+	public static class House {
+	private Cat cat;
 
-    public static class House {
-        private Cat cat;
+	public void setCat(Cat cat) {
+		this.cat = cat;
+	}
 
-        public void setCat(Cat cat) {
-            this.cat = cat;
-        }
+	public Cat getCat() {
+		return cat;
+	}
 
-        public Cat getCat() {
-            return cat;
-        }
+	}
 
-    }
+	@Test
+	public void isCapableOfDealingWithEmptyParameterForInternalWrapperValue() {
+	final Target<House> target = Target.create(House.class, "house");
+	final Parameter parameter = new Parameter("house.cat.firstLeg.id", "");
+	final House house = iogi.instantiate(target, parameter);
+	assertThat(house.cat.firstLeg.id, is(equalTo(null)));
+	}
 
-    @Test
-    public void isCapableOfDealingWithEmptyParameterForInternalWrapperValue() {
-        final Target<House> target = Target.create(House.class, "house");
-        final Parameter parameter = new Parameter("house.cat.firstLeg.id", "");
-        final House house = iogi.instantiate(target, parameter);
-        assertThat(house.cat.firstLeg.id, is(equalTo(null)));
-    }
-
-    @Test
-    public void isCapableOfDealingWithEmptyParameterForInternalValueWhichNeedsAConverter() throws OgnlException {
-    	final Target<House> target = Target.create(House.class, "house");
-    	final Parameter parameter = new Parameter("house.cat.firstLeg.birthDay", "10/5/2010");
-    	mockery.checking(new Expectations() {{
-    		allowing(mockLocaleProvider).getLocale();
-    		will(returnValue(new Locale("pt", "BR")));
-    	}});
-    	final House house = iogi.instantiate(target, parameter);
-    	assertThat(house.cat.firstLeg.birthDay, is(equalTo((Calendar)new GregorianCalendar(2010, 4, 10))));
+	@Test
+	public void isCapableOfDealingWithEmptyParameterForInternalValueWhichNeedsAConverter() throws OgnlException {
+		final Target<House> target = Target.create(House.class, "house");
+		final Parameter parameter = new Parameter("house.cat.firstLeg.birthDay", "10/5/2010");
+		when(mockLocaleProvider.getLocale()).thenReturn(new Locale("pt", "BR"));
+		final House house = iogi.instantiate(target, parameter);
+		assertThat(house.cat.firstLeg.birthDay, is(equalTo((Calendar)new GregorianCalendar(2010, 4, 10))));
 	}
 
 }

@@ -20,20 +20,21 @@ package br.com.caelum.vraptor.view;
 import java.io.IOException;
 import java.lang.reflect.Method;
 
+import javax.inject.Inject;
 import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletResponse;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import br.com.caelum.vraptor.core.MethodInfo;
 import br.com.caelum.vraptor.http.MutableRequest;
+import br.com.caelum.vraptor.http.MutableResponse;
+import br.com.caelum.vraptor.interceptor.ApplicationLogicException;
 import br.com.caelum.vraptor.proxy.MethodInvocation;
 import br.com.caelum.vraptor.proxy.Proxifier;
 import br.com.caelum.vraptor.proxy.ProxyInvocationException;
 import br.com.caelum.vraptor.proxy.SuperMethod;
 import br.com.caelum.vraptor.resource.DefaultResourceMethod;
-import br.com.caelum.vraptor.resource.ResourceMethod;
 
 /**
  * Default page result implementation.
@@ -46,27 +47,28 @@ public class DefaultPageResult implements PageResult {
 	private static final Logger logger = LoggerFactory.getLogger(DefaultPageResult.class);
 
 	private final MutableRequest request;
-	private final HttpServletResponse response;
-	private final ResourceMethod method;
+	private final MutableResponse response;
 	private final PathResolver resolver;
 	private final Proxifier proxifier;
+	private final MethodInfo requestInfo;
 
-	public DefaultPageResult(MutableRequest req, HttpServletResponse res, MethodInfo requestInfo,
+	@Inject
+	public DefaultPageResult(MutableRequest req, MutableResponse res, MethodInfo requestInfo,
 			PathResolver resolver, Proxifier proxifier) {
 		this.request = req;
 		this.response = res;
+		this.requestInfo = requestInfo;
 		this.proxifier = proxifier;
-		this.method = requestInfo.getResourceMethod();
 		this.resolver = resolver;
 	}
 
 	public void defaultView() {
+		String to = resolver.pathFor(requestInfo.getResourceMethod());
+		logger.debug("forwarding to {}", to);
 		try {
-			String to = resolver.pathFor(method);
-			logger.debug("forwarding to {}", to);
 			request.getRequestDispatcher(to).forward(request, response);
 		} catch (ServletException e) {
-			throw new ResultException(e);
+			throw new ApplicationLogicException(to + " raised an exception", e);
 		} catch (IOException e) {
 			throw new ResultException(e);
 		}
@@ -74,7 +76,7 @@ public class DefaultPageResult implements PageResult {
 
 	public void include() {
 		try {
-			String to = resolver.pathFor(method);
+			String to = resolver.pathFor(requestInfo.getResourceMethod());
 			logger.debug("including {}", to);
 			request.getRequestDispatcher(to).include(request, response);
 		} catch (ServletException e) {
@@ -137,5 +139,5 @@ public class DefaultPageResult implements PageResult {
 		this.defaultView();
 	}
 
-	
+
 }

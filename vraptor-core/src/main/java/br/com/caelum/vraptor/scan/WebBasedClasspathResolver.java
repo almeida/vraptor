@@ -39,6 +39,8 @@ public class WebBasedClasspathResolver implements ClasspathResolver {
 	private static final String WEBINF_DIR = "/WEB-INF/classes";
 	private static final String MAVEN_DIR = "target/classes";
 
+	private static Logger logger = LoggerFactory.getLogger(WebBasedClasspathResolver.class);
+	
 	private final ServletContext servletContext;
 
 	public WebBasedClasspathResolver(ServletContext servletContext) {
@@ -47,7 +49,12 @@ public class WebBasedClasspathResolver implements ClasspathResolver {
 
 	public ClassLoader getClassLoader() {
 		if (servletContext.getMajorVersion() == 3) {
-			return servletContext.getClassLoader();
+			try {
+				return servletContext.getClassLoader();
+			} catch (SecurityException e) {
+				logger.error("Could not get class loader from servlet context. " +
+						"Using current thread class loader...", e);
+			}
 		}
 		return Thread.currentThread().getContextClassLoader();
 	}
@@ -70,7 +77,7 @@ public class WebBasedClasspathResolver implements ClasspathResolver {
 		try {
 			String webInfClassesDir = findClassesDir();
 			if (webInfClassesDir != null) {
-				return new URL("file:" + webInfClassesDir + "/");
+				return new URL("file:" + webInfClassesDir + '/');
 			} else {
 				// try to guess WEB-INF/classes from vraptor.jar location
 				return new StandaloneClasspathResolver().findWebInfClassesLocation();

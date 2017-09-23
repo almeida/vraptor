@@ -38,6 +38,7 @@ import com.google.inject.Key;
 import com.google.inject.Module;
 import com.google.inject.Stage;
 import com.google.inject.TypeLiteral;
+import com.google.inject.multibindings.Multibinder;
 import com.google.inject.util.Modules;
 
 /**
@@ -62,11 +63,11 @@ public class GuiceProvider implements ContainerProvider {
 		}
 
 		public <T> boolean canProvide(Class<T> type) {
-            try {
-                return injector.getProvider(type) != null;
-            } catch (ConfigurationException e) {
-                return false;
-            }
+		try {
+		return injector.getProvider(type) != null;
+		} catch (ConfigurationException e) {
+		return false;
+		}
 		}
 	}
 
@@ -83,6 +84,10 @@ public class GuiceProvider implements ContainerProvider {
 			REQUEST.stop();
 			VRaptorRequestHolder.resetRequestForCurrentThread();
 		}
+	}
+	
+	public Container getContainer() {
+		return container;
 	}
 
 	public void start(ServletContext context) {
@@ -110,15 +115,15 @@ public class GuiceProvider implements ContainerProvider {
 	protected Module customModule() {
 		return new Module() {
 			public void configure(Binder binder) {
-				ComponentRegistry registry = new GuiceComponentRegistry(binder);
+				ComponentRegistry registry = new GuiceComponentRegistry(binder, Multibinder.newSetBinder(binder, StereotypeHandler.class));
 				BasicConfiguration config = new BasicConfiguration(context);
 
-			    // using the new vraptor.scan
-			    WebAppBootstrap webAppBootstrap = new WebAppBootstrapFactory().create(config);
-			    webAppBootstrap.configure(registry);
+				// using the new vraptor.scan
+				WebAppBootstrap webAppBootstrap = new WebAppBootstrapFactory().create(config);
+				webAppBootstrap.configure(registry);
 
-			    // call old-style custom components registration
-			    registerCustomComponents(registry);
+				// call old-style custom components registration
+				registerCustomComponents(registry);
 			}
 		};
 	}

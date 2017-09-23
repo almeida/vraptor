@@ -57,20 +57,23 @@ public interface PageResult extends View {
 	
 	/**
 	 * @deprecated  As of 3.2, replaced by
-	 *              {@link #redirectTo(String url)}
+	 *		  {@link #redirectTo(String url)}
 	 */
+	@Deprecated
 	void redirect(String url);
 	
 	/**
 	 * @deprecated  As of 3.2, replaced by
-	 *              {@link #forwardTo(String url)}
+	 *		  {@link #forwardTo(String url)}
 	 */
+	@Deprecated
 	void forward(String url);
 	
 	/**
 	 * @deprecated  As of 3.2, replaced by
-	 *              {@link #forwardTo()}
+	 *		  {@link #forwardTo()}
 	 */
+	@Deprecated
 	void forward();
 
 }

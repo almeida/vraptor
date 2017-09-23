@@ -16,67 +16,38 @@
  */
 package br.com.caelum.vraptor.ioc;
 
-import org.jmock.Expectations;
-import org.jmock.Mockery;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
-import br.com.caelum.vraptor.ComponentRegistry;
 import br.com.caelum.vraptor.InterceptionException;
 import br.com.caelum.vraptor.core.InterceptorStack;
 import br.com.caelum.vraptor.interceptor.Interceptor;
 import br.com.caelum.vraptor.interceptor.InterceptorRegistry;
-import br.com.caelum.vraptor.interceptor.InterceptorSequence;
 import br.com.caelum.vraptor.resource.ResourceMethod;
 
 public class InterceptorStereotypeHandlerTest {
 
-
-	private Mockery mockery;
-	private InterceptorRegistry interceptorRegistry;
+	private @Mock InterceptorRegistry interceptorRegistry;
 	private InterceptorStereotypeHandler handler;
-	private ComponentRegistry componentRegistry;
 
 	@Before
 	public void setUp() throws Exception {
-		mockery = new Mockery();
-		interceptorRegistry = mockery.mock(InterceptorRegistry.class);
-		componentRegistry = mockery.mock(ComponentRegistry.class);
-		handler = new InterceptorStereotypeHandler(interceptorRegistry, componentRegistry);
+		MockitoAnnotations.initMocks(this);
+		handler = new InterceptorStereotypeHandler(interceptorRegistry);
 	}
 
 	@SuppressWarnings("unchecked")
 	@Test
 	public void shouldRegisterInterceptorsOnRegistry() throws Exception {
-		mockery.checking(new Expectations() {
-			{
-				one(interceptorRegistry).register(InterceptorA.class);
-			}
-		});
 		handler.handle(InterceptorA.class);
-		mockery.assertIsSatisfied();
+		verify(interceptorRegistry, times(1)).register(InterceptorA.class);
 	}
-	@SuppressWarnings("unchecked")
-	@Test
-	public void shouldRegisterInterceptorsFromInterceptorSequenceOnBothInterceptorAndComponentRegistrys() throws Exception {
-		mockery.checking(new Expectations() {
-			{
-				one(interceptorRegistry).register(InterceptorA.class, InterceptorB.class);
-				one(componentRegistry).deepRegister(InterceptorA.class);
-				one(componentRegistry).deepRegister(InterceptorB.class);
-			}
-		});
-		handler.handle(MySequence.class);
-		mockery.assertIsSatisfied();
-	}
-
-	public static class MySequence implements InterceptorSequence {
-		@SuppressWarnings("unchecked")
-		public Class<? extends Interceptor>[] getSequence() {
-			return new Class[] { InterceptorA.class, InterceptorB.class };
-		}
-	}
-
+	
 	static class InterceptorA implements Interceptor {
 
 		public boolean accepts(ResourceMethod method) {

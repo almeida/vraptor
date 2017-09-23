@@ -34,6 +34,8 @@ import javassist.Modifier;
 import net.vidageek.mirror.dsl.Mirror;
 import br.com.caelum.vraptor.Delete;
 import br.com.caelum.vraptor.Get;
+import br.com.caelum.vraptor.Options;
+import br.com.caelum.vraptor.Patch;
 import br.com.caelum.vraptor.Path;
 import br.com.caelum.vraptor.Post;
 import br.com.caelum.vraptor.Put;
@@ -51,12 +53,17 @@ import com.google.common.base.Predicate;
  * If you want to override the convention for default URI, you can create a
  * class like:
  *
- * public class MyRoutesParser extends PathAnnotationRoutesParser { //delegate
- * constructor protected String extractControllerNameFrom(Class&lt;?&gt; type) {
- * return //your convention here }
+ * public class MyRoutesParser extends PathAnnotationRoutesParser {
+ *   //delegate constructor
  *
- * protected String defaultUriFor(String controllerName, String methodName) {
- * return //your convention here } }
+ *   protected String extractControllerNameFrom(Class&lt;?&gt; type) {
+ *	 return //your convention here
+ *   }
+ *
+ *   protected String defaultUriFor(String controllerName, String methodName) {
+ *	 return //your convention here
+ *   }
+ * }
  *
  * @author Guilherme Silveira
  * @author Lucas Cavalcanti
@@ -107,7 +114,7 @@ public class PathAnnotationRoutesParser implements RoutesParser {
 		return routes;
 	}
 
-	private EnumSet<HttpMethod> getHttpMethods(AnnotatedElement annotated) {
+	protected EnumSet<HttpMethod> getHttpMethods(AnnotatedElement annotated) {
 		EnumSet<HttpMethod> methods = EnumSet.noneOf(HttpMethod.class);
 		for (HttpMethod method : HttpMethod.values()) {
 			if (annotated.isAnnotationPresent(method.getAnnotation())) {
@@ -183,9 +190,9 @@ public class PathAnnotationRoutesParser implements RoutesParser {
 		}
 	}
 
-	private String fixLeadingSlash(String uri) {
+	private static String fixLeadingSlash(String uri) {
 		if (!uri.startsWith("/")) {
-			return  "/" + uri;
+			return '/' + uri;
 		}
 		return uri;
 	}
@@ -199,9 +206,9 @@ public class PathAnnotationRoutesParser implements RoutesParser {
 		if ("".equals(prefix)) {
 			String baseName = lowerFirstCharacter(type.getSimpleName());
 			if (baseName.endsWith("Controller")) {
-				return "/" + baseName.substring(0, baseName.lastIndexOf("Controller"));
+				return '/' + baseName.substring(0, baseName.lastIndexOf("Controller"));
 			}
-			return "/" + baseName;
+			return '/' + baseName;
 		} else {
 			return prefix;
 		}
@@ -212,7 +219,7 @@ public class PathAnnotationRoutesParser implements RoutesParser {
 	 * default URI, given a controller name and a method name
 	 */
 	protected String defaultUriFor(String controllerName, String methodName) {
-		return controllerName + "/" + methodName;
+		return controllerName + '/' + methodName;
 	}
 
 	protected String lowerFirstCharacter(String baseName) {
@@ -220,7 +227,7 @@ public class PathAnnotationRoutesParser implements RoutesParser {
 	}
 
 	private Predicate<Annotation> instanceOfMethodAnnotation() {
-		return or(instanceOf(Get.class), instanceOf(Post.class), instanceOf(Put.class), instanceOf(Delete.class));
+		return or(instanceOf(Get.class), instanceOf(Post.class), instanceOf(Put.class), instanceOf(Delete.class), instanceOf(Options.class), instanceOf(Patch.class));
 	}
 
 }

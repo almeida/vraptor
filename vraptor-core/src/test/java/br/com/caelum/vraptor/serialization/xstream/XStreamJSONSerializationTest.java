@@ -43,18 +43,18 @@ public class XStreamJSONSerializationTest {
 	private HttpServletResponse response;
 	private DefaultTypeNameExtractor extractor;
 	private HibernateProxyInitializer initializer;
+	private final XStreamBuilder builder = XStreamBuilderImpl.cleanInstance();
 
 	@Before
-    public void setup() throws Exception {
-        this.stream = new ByteArrayOutputStream();
+	public void setup() throws Exception {
+	this.stream = new ByteArrayOutputStream();
 
-        response = mock(HttpServletResponse.class);
-        when(response.getWriter()).thenReturn(new PrintWriter(stream));
-
-        extractor = new DefaultTypeNameExtractor();
+	response = mock(HttpServletResponse.class);
+	when(response.getWriter()).thenReturn(new PrintWriter(stream));
+	extractor = new DefaultTypeNameExtractor();
 		initializer = new HibernateProxyInitializer();
-		this.serialization = new XStreamJSONSerialization(response, extractor, initializer);
-    }
+		this.serialization = new XStreamJSONSerialization(response, extractor, initializer, builder);
+	}
 
 	public static class Address {
 		String street;
@@ -123,7 +123,7 @@ public class XStreamJSONSerializationTest {
 	}
 
 	@Test
-    public void shouldSerializeGenericClass() {
+	public void shouldSerializeGenericClass() {
 		String expectedResult = "{\"genericWrapper\": {\"entityList\": [{\"name\": \"washington botelho\"},{\"name\": \"washington botelho\"}],\"total\": 2}}";
 
 		Collection<Client> entityList = new ArrayList<Client>();
@@ -132,26 +132,26 @@ public class XStreamJSONSerializationTest {
 
 		GenericWrapper<Client> wrapper = new GenericWrapper<Client>(entityList, entityList.size());
 
-        serialization.from(wrapper).include("entityList").serialize();
+	serialization.from(wrapper).include("entityList").serialize();
 
-        assertThat(result(), is(equalTo(expectedResult)));
-    }
+	assertThat(result(), is(equalTo(expectedResult)));
+	}
 
-    @Test
-    public void shouldSerializeAllBasicFields() {
-        String expectedResult = "{\"order\": {\"price\": 15.0,\"comments\": \"pack it nicely, please\"}}";
-        Order order = new Order(new Client("guilherme silveira"), 15.0, "pack it nicely, please");
-        serialization.from(order).serialize();
-        assertThat(result(), is(equalTo(expectedResult)));
-    }
+	@Test
+	public void shouldSerializeAllBasicFields() {
+	String expectedResult = "{\"order\": {\"price\": 15.0,\"comments\": \"pack it nicely, please\"}}";
+	Order order = new Order(new Client("guilherme silveira"), 15.0, "pack it nicely, please");
+	serialization.from(order).serialize();
+	assertThat(result(), is(equalTo(expectedResult)));
+	}
 
-    @Test
-    public void shouldSerializeAllBasicFieldsIdented() {
-        String expectedResult = "{\"order\": {\n  \"price\": 15.0,\n  \"comments\": \"pack it nicely, please\"\n}}";
-        Order order = new Order(new Client("guilherme silveira"), 15.0, "pack it nicely, please");
-        serialization.indented().from(order).serialize();
-        assertThat(result(), is(equalTo(expectedResult)));
-    }
+	@Test
+	public void shouldSerializeAllBasicFieldsIdented() {
+	String expectedResult = "{\"order\": {\n  \"price\": 15.0,\n  \"comments\": \"pack it nicely, please\"\n}}";
+	Order order = new Order(new Client("guilherme silveira"), 15.0, "pack it nicely, please");
+	serialization.indented().from(order).serialize();
+	assertThat(result(), is(equalTo(expectedResult)));
+	}
 
 	@Test
 	public void shouldUseAlias() {
@@ -184,7 +184,7 @@ public class XStreamJSONSerializationTest {
 	@Test
 	public void shouldSerializeCollection() {
 		String expectedResult = "{\"price\": 15.0,\"comments\": \"pack it nicely, please\"}";
-		expectedResult += "," + expectedResult;
+		expectedResult += ',' + expectedResult;
 		expectedResult = "{\"list\": [" + expectedResult + "]}";
 
 		Order order = new Order(new Client("guilherme silveira"), 15.0, "pack it nicely, please");
@@ -195,7 +195,7 @@ public class XStreamJSONSerializationTest {
 	@Test
 	public void shouldSerializeCollectionWithPrefixTag() {
 		String expectedResult = "{\"price\": 15.0,\"comments\": \"pack it nicely, please\"}";
-		expectedResult += "," + expectedResult;
+		expectedResult += ',' + expectedResult;
 		expectedResult = "{\"orders\": [" + expectedResult + "]}";
 		Order order = new Order(new Client("guilherme silveira"), 15.0, "pack it nicely, please");
 		serialization.from(Arrays.asList(order, order), "orders").serialize();
@@ -226,12 +226,67 @@ public class XStreamJSONSerializationTest {
 		assertThat(result(), is(equalTo(expectedResult)));
 	}
 
+	static class WithAdvanced {
+		AdvancedOrder order;
+	}
+	
 	@Test
 	public void shouldSerializeParentFields() {
 //		String expectedResult = "<advancedOrder><notes>complex package</notes><price>15.0</price><comments>pack it nicely, please</comments></advancedOrder>";
 		Order order = new AdvancedOrder(null, 15.0, "pack it nicely, please", "complex package");
 		serialization.from(order).serialize();
 		assertThat(result(), containsString("\"notes\": \"complex package\""));
+	}
+	
+	@Test
+	public void shouldExcludeNonPrimitiveParentFields() {
+//		String expectedResult = "<advancedOrder><notes>complex package</notes><price>15.0</price><comments>pack it nicely, please</comments></advancedOrder>";
+		WithAdvanced advanced = new WithAdvanced();
+		advanced.order = new AdvancedOrder(new Client("john"), 15.0, "pack it nicely, please", "complex package");
+		serialization.from(advanced).include("order").serialize();
+		assertThat(result(), not(containsString("\"client\"")));
+	}
+	
+	@Test
+	public void shouldExcludeParentFields() {
+		Order order = new AdvancedOrder(null, 15.0, "pack it nicely, please", "complex package");
+		serialization.from(order).exclude("comments").serialize();
+		assertThat(result(), not(containsString("\"comments\"")));
+	}
+	
+	@Test
+	public void shouldExcludeAllPrimitiveFields() {
+		String expectedResult = "{\"order\": {}}";
+		Order order = new Order(new Client("nykolas lima"), 15.0, "gift bags, please");
+		serialization.from(order).excludeAll().serialize();
+		assertThat(result(), is(equalTo(expectedResult)));
+	}
+	
+	@Test
+	public void shouldExcludeAllPrimitiveParentFields() {
+		String expectedResult = "{\"advancedOrder\": {}}";
+		Order order = new AdvancedOrder(null, 15.0, "pack it nicely, please", "complex package");
+		serialization.from(order).excludeAll().serialize();
+		assertThat(result(), is(equalTo(expectedResult)));
+	}
+
+	@Test
+	public void shouldExcludeAllPrimitiveFieldsInACollection() {
+		String expectedResult = "{\"list\": [{},{}]}";
+		List<Order> orders = new ArrayList<Order>();
+		orders.add(new Order(new Client("nykolas lima"), 15.0, "gift bags, please"));
+		orders.add(new Order(new Client("Rafael Dipold"), 15.0, "gift bags, please"));
+		serialization.from(orders).excludeAll().serialize();
+		assertThat(result(), is(equalTo(expectedResult)));
+	}
+	
+	
+	@Test
+	public void shouldExcludeAllThanIncludeAndSerialize() {
+		String expectedResult = "{\"order\": {\"price\": 15.0}}";
+		Order order = new Order(new Client("nykolas lima"), 15.0, "gift bags, please");
+		serialization.from(order).excludeAll().include("price").serialize();
+		assertThat(result(), is(equalTo(expectedResult)));
 	}
 
 	@Test
@@ -299,14 +354,14 @@ public class XStreamJSONSerializationTest {
 		assertThat(result(), not(containsString("\"order\":")));
 	}
 
-    @Test
-    public void shouldOptionallyRemoveRootIdented() {
-        String expected = "{\n  \"price\": 15.0,\n  \"comments\": \"pack it nicely, please\",\n  \"items\": [\n    {\n      \"name\": \"any item\"\n    }\n  ]\n}";
-        Order order = new Order(new Client("guilherme silveira"), 15.0, "pack it nicely, please",
-                new Item("any item", 12.99));
-        serialization.indented().withoutRoot().from(order).include("items").exclude("items.price").serialize();
-        assertThat(result(), equalTo(expected));
-    }
+	@Test
+	public void shouldOptionallyRemoveRootIdented() {
+	String expected = "{\n  \"price\": 15.0,\n  \"comments\": \"pack it nicely, please\",\n  \"items\": [\n    {\n      \"name\": \"any item\"\n    }\n  ]\n}";
+	Order order = new Order(new Client("guilherme silveira"), 15.0, "pack it nicely, please",
+		new Item("any item", 12.99));
+	serialization.indented().withoutRoot().from(order).include("items").exclude("items.price").serialize();
+	assertThat(result(), equalTo(expected));
+	}
 
 	private String result() {
 		return new String(stream.toByteArray());
@@ -317,7 +372,7 @@ public class XStreamJSONSerializationTest {
 
 		private String aField;
 
-		private transient LazyInitializer initializer;
+		private final transient LazyInitializer initializer;
 
 		public SomeProxy(LazyInitializer initializer) {
 			super("name");
@@ -378,7 +433,7 @@ public class XStreamJSONSerializationTest {
 	@Test
 	public void shouldUseCollectionConverterWhenItExists() {
 		String expectedResult = "[\"testing\"]";
-		XStreamJSONSerialization serialization = new XStreamJSONSerialization(response, extractor, initializer) {
+		XStreamJSONSerialization serialization = new XStreamJSONSerialization(response, extractor, initializer, builder) {
 			@Override
 			protected XStream getXStream() {
 				XStream xStream = super.getXStream();
