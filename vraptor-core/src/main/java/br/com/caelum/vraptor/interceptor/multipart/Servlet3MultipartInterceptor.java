@@ -16,19 +16,6 @@
  */
 package br.com.caelum.vraptor.interceptor.multipart;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.UnsupportedEncodingException;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.regex.Pattern;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.Part;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import br.com.caelum.vraptor.InterceptionException;
 import br.com.caelum.vraptor.Intercepts;
 import br.com.caelum.vraptor.Validator;
@@ -37,12 +24,22 @@ import br.com.caelum.vraptor.http.MutableRequest;
 import br.com.caelum.vraptor.ioc.RequestScoped;
 import br.com.caelum.vraptor.resource.ResourceMethod;
 import br.com.caelum.vraptor.validator.ValidationMessage;
-
 import com.google.common.base.Strings;
 import com.google.common.collect.LinkedListMultimap;
 import com.google.common.collect.Multimap;
 import com.google.common.io.ByteStreams;
 import com.google.common.io.Closeables;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.Part;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.regex.Pattern;
 
 /**
  * <p>
@@ -91,7 +88,7 @@ public class Servlet3MultipartInterceptor implements MultipartInterceptor {
     }
 
     public void intercept(InterceptorStack stack, ResourceMethod method, Object resourceInstance)
-        throws InterceptionException {
+            throws InterceptionException {
         logger.debug("Request contains multipart data. Try to parse with Servlet3 Part");
 
         final Multimap<String, String> params = LinkedListMultimap.create();
@@ -109,9 +106,9 @@ public class Servlet3MultipartInterceptor implements MultipartInterceptor {
 
                     String fileName = getFileName(part);
                     UploadedFile upload = new DefaultUploadedFile(part.getInputStream(), fileName, part.getContentType());
-
-                    parameters.setParameter(part.getName(), fileName);
-                    request.setAttribute(fileName, upload);
+                    
+                    parameters.setParameter(name, name);
+                    request.setAttribute(name, upload);
                 } else {
                     logger.warn("{} is an empty file", name);
                 }
@@ -186,7 +183,7 @@ public class Servlet3MultipartInterceptor implements MultipartInterceptor {
      * Get the content of a part as String.
      */
     private String getStringValue(Part part)
-        throws IOException {
+            throws IOException {
         String encoding = request.getCharacterEncoding();
 
         InputStream in = part.getInputStream();
